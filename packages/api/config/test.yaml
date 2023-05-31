@@ -1,0 +1,10 @@
+restApi:
+  port: '3500'
+logLevel: 'none'
+mongodb:
+  host: mongodb://localhost:27017/test
+  options:
+    useUnifiedTopology: 'true'
+    connectTimeoutMS: 1000
+    serverSelectionTimeoutMS: 1000
+    keepAlive: false

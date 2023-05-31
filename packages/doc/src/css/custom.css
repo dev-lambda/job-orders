@@ -1,0 +1,50 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+ @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@300;400;600;700&family=Nunito+Sans:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600;1,700&family=Quando&display=swap');
+ 
+ /* You can override the default Infima variables here. */
+:root {
+  --ifm-color-primary: #011936;
+  --ifm-color-primary-dark: #011631;
+  --ifm-color-primary-darker: #01152e;
+  --ifm-color-primary-darkest: #011126;
+  --ifm-color-primary-light: #011b3b;
+  --ifm-color-primary-lighter: #011d3e;
+  --ifm-color-primary-lightest: #012046;
+  --ifm-background-color: #faf5f5;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+
+  --ifm-heading-font-family: 'Quando';
+  --ifm-font-family-base: 'Nunito Sans';
+  --ifm-font-family-monospace: 'Inconsolata';
+  --ifm-font-weight-semibold: 600;
+
+  --ifm-color-white: #fff;
+  --ifm-color-black: #000;
+
+  --ifm-color-gray-100: #f5f6f7;
+  --ifm-color-gray-200: #ebedf0;
+  --ifm-color-gray-300: #dadde1;
+  --ifm-color-gray-400: #ccd0d5;
+  --ifm-color-gray-500: #bec3c9;
+  --ifm-color-gray-600: #8d949e;
+  --ifm-color-gray-700: #606770;
+  --ifm-color-gray-800: #444950;
+  --ifm-color-gray-900: #1c1e21;
+
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  --ifm-color-primary: #97d2fb;
+  --ifm-color-primary-dark: #70c1fa;
+  --ifm-color-primary-darker: #5db9f9;
+  --ifm-color-primary-darkest: #23a0f7;
+  --ifm-color-primary-light: #bee3fc;
+  --ifm-color-primary-lighter: #d1ebfd;
+  --ifm-color-primary-lightest: #ffffff;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}

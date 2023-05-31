@@ -1,0 +1,5 @@
+restApi:
+  port: '8000'
+logLevel: 'info'
+mongodb:
+  host: 'to be set'

@@ -1,0 +1,37 @@
+{
+  "name": "@dev-lambda/api-template-sdk",
+  "version": "1.0.0",
+  "description": "API Template project – SDK",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dev-lambda/api-template"
+  },
+  "author": "Dev Lambda <tech@devlambda.com>",
+  "license": "ISC",
+  "engines": {
+    "node": "^18"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "module": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "files": [
+    "dist/*"
+  ],
+  "scripts": {
+    "prepublish": "tsc --project tsconfig.production.json",
+    "build": "tsc --project tsconfig.production.json",
+    "clean": "tsc --build --clean",
+    "tsc": "tsc",
+    "test": "jest --detectOpenHandles",
+    "test:watch": "jest --watch --detectOpenHandles src",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "@dev-lambda/api-template-dto": "^1.0.0"
+  }
+}

@@ -1,0 +1,23 @@
+restApi:
+  port: '3000'
+  baseUrl: 'http://localhost'
+logLevel: 'info'
+openAPI:
+  license:
+    name: ISC
+    url: https://dev-lambda.github.io/api-template/license
+  termsOfService: https://dev-lambda.github.io/api-template/terms
+  contact:
+    name: API Support
+    email: support@devlambda.com
+    url: http://dev-lambda.github.io/api-template/support
+  externalDocs:
+    description: Full documentation site
+    url: https://dev-lambda.github.io/api-template/
+mongodb:
+  host: mongodb://localhost:27017/default
+  options:
+    useUnifiedTopology: 'true'
+    connectTimeoutMS: 1000
+    serverSelectionTimeoutMS: 5000
+    # keepAlive: true

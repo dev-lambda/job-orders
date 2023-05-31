@@ -1,0 +1,38 @@
+{
+  "name": "@dev-lambda/api-template-dto",
+  "version": "1.0.0",
+  "description": "API Template project – DTO",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dev-lambda/api-template"
+  },
+  "author": "Dev Lambda <tech@devlambda.com>",
+  "license": "ISC",
+  "engines": {
+    "node": "^18"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "main": "dist/index.js",
+  "types": "dist/src/index.d.ts",
+  "files": [
+    "dist/*"
+  ],
+  "scripts": {
+    "prod": "NODE_PATH=dist NODE_ENV=production node dist/src/index.js",
+    "start": "ts-node src/index.ts",
+    "watch": "nodemon",
+    "prepublish": "tsc --project tsconfig.production.json",
+    "build": "tsc --project tsconfig.production.json",
+    "clean": "tsc --build --clean",
+    "tsc": "tsc",
+    "test": "jest --detectOpenHandles",
+    "test:watch": "jest --watch --detectOpenHandles src",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+  },
+  "dependencies": {
+  }
+}

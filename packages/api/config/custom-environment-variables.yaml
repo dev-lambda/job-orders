@@ -1,0 +1,6 @@
+restApi:
+  port: 'PORT'
+  baseUrl: 'baseUrl'
+logLevel: 'logLevel'
+mongodb:
+  host: 'mongoDbHost'
