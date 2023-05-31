@@ -1,10 +1,10 @@
 {
-  "name": "@dev-lambda/api-template-root",
+  "name": "@dev-lambda/job-orders-root",
   "version": "1.0.0",
-  "description": "API Template project",
+  "description": "Job orders project",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dev-lambda/api-template"
+    "url": "https://github.com/dev-lambda/job-orders"
   },
   "author": "Dev Lambda <tech@devlambda.com>",
   "license": "ISC",
@@ -13,10 +13,10 @@
   },
   "private": true,
   "scripts": {
-    "prod": "npm run prod -workspace @dev-lambda/api-template",
-    "start": "npm start -workspace @dev-lambda/api-template",
-    "watch": "npm run watch -workspace @dev-lambda/api-template",
-    "doc": "npm run dumpApiSpec -w @dev-lambda/api-template && npm start -workspace @dev-lambda/api-template-doc",
+    "prod": "npm run prod -workspace @dev-lambda/job-orders",
+    "start": "npm start -workspace @dev-lambda/job-orders",
+    "watch": "npm run watch -workspace @dev-lambda/job-orders",
+    "doc": "npm run dumpApiSpec -w @dev-lambda/job-orders && npm start -workspace @dev-lambda/job-orders-doc",
     "build": "npm run build -workspaces --if-present",
     "clean": "npm run clean -workspaces --if-present",
     "test": "npm run test -workspaces --if-present -- --passWithNoTests",

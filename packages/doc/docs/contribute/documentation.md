@@ -68,9 +68,9 @@ This project has a documentation site in order to provide guided learn paths and
 
 It uses docusaurus as the site builder engine and is hosted in a github page available at:
 
-[https://dev-lambda.github.io/api-template/](https://dev-lambda.github.io/api-template/)
+[https://dev-lambda.github.io/job-orders/](https://dev-lambda.github.io/job-orders/)
 
-The full documentation website is organised as a standard docusaurus site under the `/packages/doc` folder. Its dependencies are independent as those of the project's which means that it has it's own set of `npm scrips` and requires installing its own packages for the `api-template-doc` workspace.
+The full documentation website is organised as a standard docusaurus site under the `/packages/doc` folder. Its dependencies are independent as those of the project's which means that it has it's own set of `npm scrips` and requires installing its own packages for the `job-orders-doc` workspace.
 
 In order to run the documentation locally:
 
@@ -83,9 +83,9 @@ In order to run the documentation locally:
 - Generate/refresh the OpenAPI specification from code comments for the API section of the documentation
 
   ```sh title="In the project root folder"
-  npm run dumpApiSpec -w api-template
+  npm run dumpApiSpec -w job-orders
   ```
 
-The local documentation page is available at [http://localhost:3500/api-template](http://localhost:3500/api-template).
+The local documentation page is available at [http://localhost:3500/job-orders](http://localhost:3500/job-orders).
 
 This documentation site is deployed using github actions, for more details see the [deployment section](deployment#publish-documentation-website-to-gh-pages).

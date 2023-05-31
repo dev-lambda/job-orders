@@ -18,15 +18,15 @@ COPY package*.json ./
 COPY packages/dto ./packages/dto
 COPY packages/api ./packages/api
 
-RUN npm ci -include-workspace-root -workspace @dev-lambda/api-template
+RUN npm ci -include-workspace-root -workspace @dev-lambda/job-orders
 
 ## cleanup private npm packages setup
 RUN rm .npmrc
 
 # copy all necessary (remaining) files and build (use .dockerignore to exclude specific files)
 COPY tsconfig.json ./
-RUN npm run build --workspace @dev-lambda/api-template-dto
-RUN npm run build --workspace @dev-lambda/api-template
+RUN npm run build --workspace @dev-lambda/job-orders-dto
+RUN npm run build --workspace @dev-lambda/job-orders
 
 # remove dev-dependencies
 RUN npm prune --omit=dev

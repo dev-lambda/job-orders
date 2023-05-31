@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { isAlive as serverOK } from 'src/server';
 import { isAlive as dbOk } from 'src/db';
-import { healtStatus } from '@dev-lambda/api-template-dto';
+import { healtStatus } from '@dev-lambda/job-orders-dto';
 
 /**
  * @openapi

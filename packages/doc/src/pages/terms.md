@@ -2,7 +2,7 @@
 
 ## Acceptance of Terms of Use
 
-By accessing and using the api-template documentation website, users agree to be bound by these Terms of Use.
+By accessing and using the job-orders documentation website, users agree to be bound by these Terms of Use.
 
 ## Use of the website
 

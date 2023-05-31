@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { message } from '@dev-lambda/api-template-dto';
+import { message } from '@dev-lambda/job-orders-dto';
 /**
  * @openapi
  * /:
@@ -40,5 +40,5 @@ export const ok = (_: Request, res: Response) => {
  *   - name: API
  *     description: API specific routes
  *     externalDocs:
- *       url: https://dev-lambda.github.io/api-template/
+ *       url: https://dev-lambda.github.io/job-orders/
  */

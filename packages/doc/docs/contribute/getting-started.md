@@ -7,8 +7,8 @@ sidebar_position: 0
 ## Clone sources and install dependencies
 
 ```sh
-git clone git@github.com:dev-lambda/api-template.git
-cd api-template
+git clone git@github.com:dev-lambda/job-orders.git
+cd job-orders
 npm run i
 ```
 

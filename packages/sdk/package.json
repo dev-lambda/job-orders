@@ -1,10 +1,10 @@
 {
-  "name": "@dev-lambda/api-template-sdk",
+  "name": "@dev-lambda/job-orders-sdk",
   "version": "1.0.0",
-  "description": "API Template project – SDK",
+  "description": "Job orders project – SDK",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dev-lambda/api-template"
+    "url": "https://github.com/dev-lambda/job-orders"
   },
   "author": "Dev Lambda <tech@devlambda.com>",
   "license": "ISC",
@@ -32,6 +32,6 @@
   },
   "dependencies": {
     "axios": "^1.4.0",
-    "@dev-lambda/api-template-dto": "^1.0.0"
+    "@dev-lambda/job-orders-dto": "^1.0.0"
   }
 }

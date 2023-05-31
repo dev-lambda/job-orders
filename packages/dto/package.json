@@ -1,10 +1,10 @@
 {
-  "name": "@dev-lambda/api-template-dto",
+  "name": "@dev-lambda/job-orders-dto",
   "version": "1.0.0",
-  "description": "API Template project – DTO",
+  "description": "Job orders project – DTO",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dev-lambda/api-template"
+    "url": "https://github.com/dev-lambda/job-orders"
   },
   "author": "Dev Lambda <tech@devlambda.com>",
   "license": "ISC",

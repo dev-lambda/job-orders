@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { message, healtStatus } from '@dev-lambda/api-template-dto';
+import { message, healtStatus } from '@dev-lambda/job-orders-dto';
 import { errorLogInterceptor } from './errorLogInterceptor';
 import { SDKError, ErrorType } from './SDKError';
 import { responseLogInterceptor } from './responseLogInterceptor';
@@ -10,7 +10,7 @@ interface ClientOptions {
   authToken?: string;
 }
 
-export const ClientName = 'api-template client';
+export const ClientName = 'job-orders client';
 
 export class Client {
   private axios: axios.AxiosInstance;

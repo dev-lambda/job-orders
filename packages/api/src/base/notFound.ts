@@ -1,4 +1,4 @@
-import { notFoundMessage } from '@dev-lambda/api-template-dto';
+import { notFoundMessage } from '@dev-lambda/job-orders-dto';
 import { Request, Response } from 'express';
 
 /**

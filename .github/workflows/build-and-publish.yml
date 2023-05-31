@@ -34,9 +34,9 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run lint
-      - run: npm run build -w @dev-lambda/api-template-dto
-      - run: npm run build -w @dev-lambda/api-template
-      - run: npm run build -w @dev-lambda/api-template-sdk
+      - run: npm run build -w @dev-lambda/job-orders-dto
+      - run: npm run build -w @dev-lambda/job-orders
+      - run: npm run build -w @dev-lambda/job-orders-sdk
       - run: npm test
       - name: Keep built output
         uses: actions/upload-artifact@v3
@@ -79,7 +79,7 @@ jobs:
           name: built-assets
           path: packages
       - run: find packages
-      - run: npm publish -w @dev-lambda/api-template-dto  -w @dev-lambda/api-template-sdk
+      - run: npm publish -w @dev-lambda/job-orders-dto  -w @dev-lambda/job-orders-sdk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

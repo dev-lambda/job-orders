@@ -1,7 +1,54 @@
-# Api-template documentation
+# job orders
 
-Explain what this project does
+Asynchronous job queuing and execution tracking system.
 
 ## Features
 
-- List features
+### Job orders dispatch and execution tracking
+
+- Dispatch background jobs to dedicated microservices
+- Job Submission: job orders allows clients to submit jobs for asynchronous processing.
+- Job Management: job orders provides an interface for monitoring the progress of jobs and retrieving the results when they are completed.
+- Job Prioritization: job orders allows for jobs to be prioritized based on their importance or urgency.
+- Track job execution status
+
+### Integrity
+
+- Ensure that each job order is processed at least once and successfully so at most once (unless cancelled or expired).
+
+### Execution control
+
+- Schedule execution.
+- Cancel, reschedule job orders.
+- Set a validity expiration date.
+- Automatic Retry: job orders provides automatic retry functionality for failed jobs, with configurable retry policies and backoff strategies.
+- Dead Letter Queue: job orders can route failed jobs to a dead letter queue, allowing for manual inspection and debugging of failed jobs.
+
+### Error recovery
+
+- Recover from microservices errors, replay job orders
+- Error Handling: job orders provides configurable error handling mechanisms to manage job failures and retries.
+- Graceful Degradation: job orders can gracefully degrade functionality when dependent microservices are unavailable, allowing other jobs to continue processing.
+
+### Observability
+
+- Monitor background job activity
+- Real-Time Monitoring: job orders provides real-time monitoring of job progress, allowing clients to view updates on job status as they occur.
+- Reporting: job orders provides reporting and analytics features, allowing clients to track job performance and identify areas for optimization.
+- Error Logging: job orders can log errors and exceptions for debugging purposes, providing insights into the root cause of job failures.
+
+### Security
+
+- Security: job orders provides authentication and authorization mechanisms to ensure that only authorized users can submit and monitor jobs.
+- Circuit Breaking: job orders can implement circuit breaking patterns to detect and handle failures in downstream microservices, preventing cascading failures.
+
+### Integration
+
+- job orders makes no assumption on the technology used to execute jobs, instead it provides a protocol for job execution tracking that can be easily integrated on your current codebase.
+- Customization: job orders is highly customizable, allowing for configuration of parameters such as timeout durations, retry limits, and worker node capacity.
+
+### Scalability
+
+- Scalability: job orders is designed to scale horizontally, allowing for multiple worker nodes to process jobs in parallel.
+- Load Balancing: job orders can implement load balancing techniques to distribute job processing across multiple worker nodes, improving fault tolerance and scalability.
+- Health Checks: job orders can implement health checks to monitor the availability and performance of worker nodes, ensuring that only healthy nodes are used for job processing.
