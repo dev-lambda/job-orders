@@ -7,4 +7,3 @@ mongodb:
     useUnifiedTopology: 'true'
     connectTimeoutMS: 1000
     serverSelectionTimeoutMS: 1000
-    keepAlive: false

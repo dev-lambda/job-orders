@@ -1,7 +1,4 @@
-export interface JobQueuer {
-  queue(id: string, scheduleAt?: Date): Promise<boolean>;
-  unqueue(id: string): Promise<boolean>;
-}
+import { JobQueuer } from './JobQueuer';
 
 export class MemoryJobQueuer implements JobQueuer {
   private orders: Set<string>;

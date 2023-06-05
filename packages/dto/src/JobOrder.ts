@@ -1,3 +1,5 @@
+import z from 'zod';
+
 export interface JobParams {
   maxRetry: number;
   schedule?: Date;
@@ -5,13 +7,16 @@ export interface JobParams {
   timeout?: number; // seconds
 }
 
-export enum JobStatus {
-  pending = 'pending',
-  processing = 'processing',
-  completed = 'completed',
-  failed = 'failed',
-  cancelled = 'cancelled',
-}
+export const JobStatusSchema = z.enum([
+  'pending',
+  'processing',
+  'completed',
+  'failed',
+  'cancelled',
+]);
+
+export type JobStatus = z.infer<typeof JobStatusSchema>;
+
 export enum JobErrorType {
   unprocessable = 'unprocessable',
   error = 'error',

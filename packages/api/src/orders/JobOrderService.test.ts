@@ -1,9 +1,8 @@
-import { JobErrorType, JobParams, JobStatus } from '@dev-lambda/job-orders-dto';
-import { TestEmitterService } from './EmitterService';
-import { JobEvents } from './JobEvents';
-import { MemoryJobOrderRepository } from './JobOrderRepository';
+import { JobErrorType, JobParams } from '@dev-lambda/job-orders-dto';
+import { TestEmitterService } from 'src/eventEmitter/TestEmitterService';
+import { MemoryJobOrderRepository } from 'src/repository/MemoryJobOrderRepository';
 import { JobOrderService } from './JobOrderService';
-import { MemoryJobQueuer } from './JobQueuer';
+import { MemoryJobQueuer } from 'src/queuer/MemoryJobQueuer';
 
 describe('Job order request', () => {
   const queuer = new MemoryJobQueuer();
@@ -22,10 +21,10 @@ describe('Job order request', () => {
     expect(id).not.toBeNull();
   });
 
-  it(`Should create job orders on ${JobStatus.pending} status`, async () => {
+  it(`Should create job orders on ${'pending'} status`, async () => {
     let type = 'MyJobType';
     let persistedJobOrder = await service.requestOrder(type, {});
-    expect(persistedJobOrder.status).toEqual(JobStatus.pending);
+    expect(persistedJobOrder.status).toEqual('pending');
   });
 
   it('Should honor params on job orders creation', async () => {
@@ -82,75 +81,73 @@ describe('Job event emmission', () => {
     id = persistedJobOrder.id;
   });
 
-  it(`Should emmit a ${JobEvents.requested} event on new orders`, async () => {
+  it(`Should emmit a ${'jobRequested'} event on new orders`, async () => {
     expect(
       emitter
-        .findByType(JobEvents.requested)
+        .findByType('jobRequested')
         .filter((event) => event.payload.id === id)
     ).toMatchObject([{ payload: { id } }]);
   });
 
-  it(`Should emmit a ${JobEvents.cancelled} event on cancelled orders`, async () => {
+  it(`Should emmit a ${'jobCancelled'} event on cancelled orders`, async () => {
     await service.cancelOrder(id);
     expect(
       emitter
-        .findByType(JobEvents.cancelled)
+        .findByType('jobCancelled')
         .filter((event) => event.payload.id === id)
     ).toMatchObject([{ payload: { id } }]);
   });
 
-  it(`Should emmit a ${JobEvents.expired} event on cancelled orders`, async () => {
+  it(`Should emmit a ${'jobExpired'} event on cancelled orders`, async () => {
     await service.expireOrder(id, tomorrow);
     expect(
       emitter
-        .findByType(JobEvents.expired)
+        .findByType('jobExpired')
         .filter((event) => event.payload.id === id)
     ).toMatchObject([{ payload: { id } }]);
   });
 
-  it(`Should emmit a ${JobEvents.resumed} event on cancelled orders`, async () => {
+  it(`Should emmit a ${'jobResumed'} event on cancelled orders`, async () => {
     await service.cancelOrder(id);
     await service.resumeOrder(id);
     expect(
       emitter
-        .findByType(JobEvents.resumed)
+        .findByType('jobResumed')
         .filter((event) => event.payload.id === id)
     ).toMatchObject([{ payload: { id } }]);
   });
 
-  it(`Should emmit a ${JobEvents.started} event on started orders`, async () => {
+  it(`Should emmit a ${'jobStarted'} event on started orders`, async () => {
     await service.startOrder(id);
     expect(
       emitter
-        .findByType(JobEvents.started)
+        .findByType('jobStarted')
         .filter((event) => event.payload.id === id)
     ).toMatchObject([{ payload: { id } }]);
   });
 
-  it(`Should emmit a ${JobEvents.success} event on completed orders`, async () => {
+  it(`Should emmit a ${'jobSuccess'} event on completed orders`, async () => {
     await service.startOrder(id);
     await service.completeOrder(id, { message: 'done' });
     expect(
       emitter
-        .findByType(JobEvents.success)
+        .findByType('jobSuccess')
         .filter((event) => event.payload.id === id)
     ).toMatchObject([{ payload: { id } }]);
   });
 
-  it(`Should emmit a ${JobEvents.error} event on errored orders`, async () => {
+  it(`Should emmit a ${'jobError'} event on errored orders`, async () => {
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
       type: JobErrorType.error,
       payload: { message: 'oups' },
     });
     expect(
-      emitter
-        .findByType(JobEvents.error)
-        .filter((event) => event.payload.id === id)
+      emitter.findByType('jobError').filter((event) => event.payload.id === id)
     ).toMatchObject([{ payload: { id } }]);
   });
 
-  it(`Should emmit a ${JobEvents.unprocessable} event on unprocessable orders`, async () => {
+  it(`Should emmit a ${'jobUnprocessable'} event on unprocessable orders`, async () => {
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
       type: JobErrorType.unprocessable,
@@ -158,12 +155,12 @@ describe('Job event emmission', () => {
     });
     expect(
       emitter
-        .findByType(JobEvents.unprocessable)
+        .findByType('jobUnprocessable')
         .filter((event) => event.payload.id === id)
     ).toMatchObject([{ payload: { id } }]);
   });
 
-  it(`Should emmit a ${JobEvents.maxErrors} event when too many errors`, async () => {
+  it(`Should emmit a ${'jobMaxErrorReached'} event when too many errors`, async () => {
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
       type: JobErrorType.error,
@@ -181,7 +178,7 @@ describe('Job event emmission', () => {
     });
     expect(
       emitter
-        .findByType(JobEvents.maxErrors)
+        .findByType('jobMaxErrorReached')
         .filter((event) => event.payload.id === id)
     ).toMatchObject([{ payload: { id } }]);
   });
@@ -213,35 +210,35 @@ describe('Job order transitions', () => {
     let cancel = await service.cancelOrder(id);
     expect(cancel).toBe(true);
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.cancelled);
+    expect(result.status).toBe('cancelled');
   });
 
   it('Should fail cancelling a cancelled job order', async () => {
     await service.cancelOrder(id);
     await expect(service.cancelOrder(id)).rejects.toThrow();
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.cancelled);
+    expect(result.status).toBe('cancelled');
   });
 
   it('Should expire a job order', async () => {
     let expired = await service.expireOrder(id, tomorrow);
     expect(expired).toBe(true);
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.cancelled);
+    expect(result.status).toBe('cancelled');
   });
 
   it('Should not expire a job order if expiration not reached', async () => {
     let expired = await service.expireOrder(id, today);
     expect(expired).toBe(false);
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.pending);
+    expect(result.status).toBe('pending');
   });
 
   it('Should fail expiring a cancelled job order', async () => {
     await service.cancelOrder(id);
     await expect(service.expireOrder(id, tomorrow)).rejects.toThrow();
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.cancelled);
+    expect(result.status).toBe('cancelled');
   });
 
   it('Should resume a cancelled job order', async () => {
@@ -249,27 +246,27 @@ describe('Job order transitions', () => {
     let resumed = await service.resumeOrder(id);
     expect(resumed).toBe(true);
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.pending);
+    expect(result.status).toBe('pending');
   });
 
   it('Should fail resuming a pending job order', async () => {
     await expect(service.resumeOrder(id)).rejects.toThrow();
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.pending);
+    expect(result.status).toBe('pending');
   });
 
   it('Should start a pending job order', async () => {
     let started = await service.startOrder(id);
     expect(started).toBe(true);
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.processing);
+    expect(result.status).toBe('processing');
   });
 
   it('Should fail starting a cancelled job order', async () => {
     await service.cancelOrder(id);
     await expect(service.startOrder(id)).rejects.toThrow();
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.cancelled);
+    expect(result.status).toBe('cancelled');
   });
 
   it('Should complete a processing job order', async () => {
@@ -277,7 +274,7 @@ describe('Job order transitions', () => {
     let completed = await service.completeOrder(id, { message: 'youhou !!' });
     expect(completed).toBe(true);
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.completed);
+    expect(result.status).toBe('completed');
     expect(result.runs).toMatchObject([{ result: { message: 'youhou !!' } }]);
   });
 
@@ -287,7 +284,7 @@ describe('Job order transitions', () => {
       service.completeOrder(id, { message: 'youhou !!' })
     ).rejects.toThrow();
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.cancelled);
+    expect(result.status).toBe('cancelled');
     expect(result.runs).toHaveLength(0);
   });
 
@@ -298,7 +295,7 @@ describe('Job order transitions', () => {
       service.completeOrder(id, { message: 'youhou again ?!' })
     ).rejects.toThrow();
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.completed);
+    expect(result.status).toBe('completed');
     expect(result.runs).toMatchObject([{ result: { message: 'youhou !!' } }]);
   });
 
@@ -307,7 +304,7 @@ describe('Job order transitions', () => {
     await service.completeOrder(id, { message: 'youhou !!' });
     await expect(service.resumeOrder(id)).rejects.toThrow();
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.completed);
+    expect(result.status).toBe('completed');
   });
 
   it('Should error a processing job order', async () => {
@@ -318,7 +315,7 @@ describe('Job order transitions', () => {
     });
     expect(errored).toBe(true);
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.pending);
+    expect(result.status).toBe('pending');
     expect(result.runs).toMatchObject([
       {
         error: {
@@ -337,7 +334,7 @@ describe('Job order transitions', () => {
       })
     ).rejects.toThrow();
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.pending);
+    expect(result.status).toBe('pending');
   });
 
   it('Should fail a job order on max retries', async () => {
@@ -357,7 +354,7 @@ describe('Job order transitions', () => {
       payload: { message: 'oh no 3 !!' },
     });
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.failed);
+    expect(result.status).toBe('failed');
     expect(result.runs).toMatchObject([
       {
         error: {
@@ -388,7 +385,7 @@ describe('Job order transitions', () => {
     });
     expect(errored).toBe(true);
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.failed);
+    expect(result.status).toBe('failed');
     expect(result.runs).toMatchObject([
       {
         error: {
@@ -409,7 +406,7 @@ describe('Job order transitions', () => {
     expect(resumed).toBe(true);
 
     let result = await service.get(id);
-    expect(result.status).toBe(JobStatus.pending);
+    expect(result.status).toBe('pending');
   });
 });
 
@@ -511,7 +508,7 @@ describe('Job order with failing emitter', () => {
 
     await expect(service.cancelOrder(id)).rejects.toThrow();
     let order = await repository.find(id);
-    expect(order.status).toBe(JobStatus.pending);
+    expect(order.status).toBe('pending');
   });
 
   it('Should avoid expiring orders on event fail', async () => {
@@ -522,7 +519,7 @@ describe('Job order with failing emitter', () => {
 
     await expect(service.expireOrder(id, tomorrow)).rejects.toThrow();
     let order = await repository.find(id);
-    expect(order.status).toBe(JobStatus.pending);
+    expect(order.status).toBe('pending');
   });
 
   it('Should avoid expiring orders on event fail', async () => {

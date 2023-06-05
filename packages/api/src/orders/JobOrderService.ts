@@ -4,12 +4,12 @@ import {
   JobError,
   JobErrorType,
   JobParams,
+  JobEvents,
   JobStatus,
 } from '@dev-lambda/job-orders-dto';
-import { JobOrderRepository } from './JobOrderRepository';
-import { JobQueuer } from './JobQueuer';
-import { EmitterService } from './EmitterService';
-import { JobEvents } from './JobEvents';
+import { JobOrderRepository } from '../repository/JobOrderRepository';
+import { JobQueuer } from '../queuer/JobQueuer';
+import { EmitterService } from '../eventEmitter/EmitterService';
 
 // TODO use lock to make all operations atomic (concurrency safe)
 
@@ -22,7 +22,7 @@ export class JobOrderService {
   constructor(
     private repository: JobOrderRepository,
     private queuer: JobQueuer,
-    private emitter: EmitterService
+    private emitter: EmitterService<JobEvents, GenericPayload>
   ) {}
 
   async requestOrder(
@@ -35,7 +35,7 @@ export class JobOrderService {
       type,
       payload,
       params: resolvedParams,
-      status: JobStatus.pending,
+      status: 'pending',
       runs: [],
     };
     let persistedJob = await this.repository.create(order);
@@ -48,7 +48,7 @@ export class JobOrderService {
       await this.repository.delete(id);
       throw new Error(`Unabled to queue job ${id}`);
     }
-    let event = await this.emitter.shout(JobEvents.requested, {
+    let event = await this.emitter.shout('jobRequested', {
       id,
       type,
     });
@@ -63,36 +63,36 @@ export class JobOrderService {
   async cancelOrder(id: string) {
     let order = await this.repository.find(id);
     let { status, type } = order;
-    if (status !== JobStatus.pending) {
+    if (status !== 'pending') {
       throw new Error(`Invalid order status, expecting pending, got ${status}`);
     }
     await this.queuer.unqueue(id);
-    let event = await this.emitter.shout(JobEvents.cancelled, { id, type });
+    let event = await this.emitter.shout('jobCancelled', { id, type });
     if (!event) {
       // await this.repository.delete(id);
       // await this.queuer.unqueue(id);
       throw new Error(`Unabled to notify job event ${id}`);
     }
-    return this.repository.setStatus(id, JobStatus.cancelled);
+    return this.repository.setStatus(id, 'cancelled');
   }
 
   async startOrder(id: string) {
     let order = await this.repository.find(id);
     let { status, type } = order;
-    if (status !== JobStatus.pending) {
+    if (status !== 'pending') {
       throw new Error(`Invalid order status, expecting pending, got ${status}`);
     }
-    let event = await this.emitter.shout(JobEvents.started, { id, type });
+    let event = await this.emitter.shout('jobStarted', { id, type });
     if (!event) {
       throw new Error(`Unabled to notify job event ${id}`);
     }
-    return await this.repository.setStatus(id, JobStatus.processing);
+    return await this.repository.setStatus(id, 'processing');
   }
 
   async errorProcessingOrder(id: string, error: JobError) {
     let order = await this.repository.find(id);
     let { status, type } = order;
-    if (status !== JobStatus.processing) {
+    if (status !== 'processing') {
       throw new Error(
         `Invalid order status, expecting processing, got ${status}`
       );
@@ -102,7 +102,7 @@ export class JobOrderService {
 
     let newStatus: JobStatus;
     if (error.type === JobErrorType.unprocessable) {
-      let event = await this.emitter.shout(JobEvents.unprocessable, {
+      let event = await this.emitter.shout('jobUnprocessable', {
         id,
         type,
         error,
@@ -110,9 +110,9 @@ export class JobOrderService {
       if (!event) {
         throw new Error(`Unabled to notify job event ${id}`);
       }
-      newStatus = JobStatus.failed;
+      newStatus = 'failed';
     } else if (currentRetries + 1 >= maxRetry) {
-      let event = await this.emitter.shout(JobEvents.maxErrors, {
+      let event = await this.emitter.shout('jobMaxErrorReached', {
         id,
         type,
         error,
@@ -120,9 +120,9 @@ export class JobOrderService {
       if (!event) {
         throw new Error(`Unabled to notify job event ${id}`);
       }
-      newStatus = JobStatus.failed;
+      newStatus = 'failed';
     } else {
-      let event = await this.emitter.shout(JobEvents.error, {
+      let event = await this.emitter.shout('jobError', {
         id,
         type,
         error,
@@ -130,7 +130,7 @@ export class JobOrderService {
       if (!event) {
         throw new Error(`Unabled to notify job event ${id}`);
       }
-      newStatus = JobStatus.pending;
+      newStatus = 'pending';
     }
     await this.repository.addRun(id, { error });
     return this.repository.setStatus(id, newStatus);
@@ -139,30 +139,30 @@ export class JobOrderService {
   async resumeOrder(id: string) {
     let order = await this.repository.find(id);
     let { status, type } = order;
-    if (![JobStatus.cancelled, JobStatus.failed].includes(status)) {
+    if (!['cancelled', 'failed'].includes(status)) {
       throw new Error(
         `Invalid order status, expecting cancelled or failed, got ${status}`
       );
     }
-    let event = await this.emitter.shout(JobEvents.resumed, {
+    let event = await this.emitter.shout('jobResumed', {
       id,
       type,
     });
     if (!event) {
       throw new Error(`Unabled to notify job event ${id}`);
     }
-    return await this.repository.setStatus(id, JobStatus.pending);
+    return await this.repository.setStatus(id, 'pending');
   }
 
   async completeOrder(id: string, result: GenericPayload) {
     let order = await this.repository.find(id);
     let { status, type } = order;
-    if (status !== JobStatus.processing) {
+    if (status !== 'processing') {
       throw new Error(
         `Invalid order status, expecting processing, got ${status}`
       );
     }
-    let event = await this.emitter.shout(JobEvents.success, {
+    let event = await this.emitter.shout('jobSuccess', {
       id,
       type,
       result,
@@ -171,19 +171,19 @@ export class JobOrderService {
       throw new Error(`Unabled to notify job event ${id}`);
     }
     /*let updatedOrder =*/ await this.repository.addRun(id, { result });
-    return this.repository.setStatus(id, JobStatus.completed);
+    return this.repository.setStatus(id, 'completed');
   }
 
   async expireOrder(id: string, asOf: Date = new Date()) {
     let order = await this.repository.find(id);
     let { status, type } = order;
     let { expiresAt } = order.params;
-    if (status !== JobStatus.pending) {
+    if (status !== 'pending') {
       throw new Error(`Invalid order status, expecting pending, got ${status}`);
     }
     if (expiresAt && expiresAt <= asOf) {
       await this.queuer.unqueue(id);
-      let event = await this.emitter.shout(JobEvents.expired, {
+      let event = await this.emitter.shout('jobExpired', {
         id,
         type,
         asOf,
@@ -191,7 +191,7 @@ export class JobOrderService {
       if (!event) {
         throw new Error(`Unabled to notify job event ${id}`);
       }
-      return this.repository.setStatus(id, JobStatus.cancelled);
+      return this.repository.setStatus(id, 'cancelled');
     }
     return false;
   }
