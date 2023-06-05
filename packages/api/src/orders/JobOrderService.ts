@@ -2,7 +2,6 @@ import {
   GenericJobOrder,
   GenericPayload,
   JobError,
-  JobErrorType,
   JobParams,
   JobEvents,
   JobStatus,
@@ -101,7 +100,7 @@ export class JobOrderService {
     let currentRetries = order.runs.length;
 
     let newStatus: JobStatus;
-    if (error.type === JobErrorType.unprocessable) {
+    if (error.type === 'unprocessable') {
       let event = await this.emitter.shout('jobUnprocessable', {
         id,
         type,

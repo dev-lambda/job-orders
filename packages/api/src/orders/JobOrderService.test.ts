@@ -1,4 +1,4 @@
-import { JobErrorType, JobParams } from '@dev-lambda/job-orders-dto';
+import { JobParams } from '@dev-lambda/job-orders-dto';
 import { TestEmitterService } from 'src/eventEmitter/TestEmitterService';
 import { MemoryJobOrderRepository } from 'src/repository/MemoryJobOrderRepository';
 import { JobOrderService } from './JobOrderService';
@@ -139,7 +139,7 @@ describe('Job event emmission', () => {
   it(`Should emmit a ${'jobError'} event on errored orders`, async () => {
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
-      type: JobErrorType.error,
+      type: 'error',
       payload: { message: 'oups' },
     });
     expect(
@@ -150,7 +150,7 @@ describe('Job event emmission', () => {
   it(`Should emmit a ${'jobUnprocessable'} event on unprocessable orders`, async () => {
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
-      type: JobErrorType.unprocessable,
+      type: 'unprocessable',
       payload: { message: 'oups' },
     });
     expect(
@@ -163,17 +163,17 @@ describe('Job event emmission', () => {
   it(`Should emmit a ${'jobMaxErrorReached'} event when too many errors`, async () => {
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
-      type: JobErrorType.error,
+      type: 'error',
       payload: { message: 'oups' },
     });
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
-      type: JobErrorType.error,
+      type: 'error',
       payload: { message: 'oups' },
     });
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
-      type: JobErrorType.error,
+      type: 'error',
       payload: { message: 'oups' },
     });
     expect(
@@ -310,7 +310,7 @@ describe('Job order transitions', () => {
   it('Should error a processing job order', async () => {
     await service.startOrder(id);
     let errored = await service.errorProcessingOrder(id, {
-      type: JobErrorType.error,
+      type: 'error',
       payload: { message: 'oh no !!' },
     });
     expect(errored).toBe(true);
@@ -319,7 +319,7 @@ describe('Job order transitions', () => {
     expect(result.runs).toMatchObject([
       {
         error: {
-          type: JobErrorType.error,
+          type: 'error',
           payload: { message: 'oh no !!' },
         },
       },
@@ -329,7 +329,7 @@ describe('Job order transitions', () => {
   it('Should fail to error a pending job order', async () => {
     await expect(
       service.errorProcessingOrder(id, {
-        type: JobErrorType.error,
+        type: 'error',
         payload: { message: 'oh no !!' },
       })
     ).rejects.toThrow();
@@ -340,17 +340,17 @@ describe('Job order transitions', () => {
   it('Should fail a job order on max retries', async () => {
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
-      type: JobErrorType.error,
+      type: 'error',
       payload: { message: 'oh no !!' },
     });
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
-      type: JobErrorType.error,
+      type: 'error',
       payload: { message: 'oh no 2 !!' },
     });
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
-      type: JobErrorType.error,
+      type: 'error',
       payload: { message: 'oh no 3 !!' },
     });
     let result = await service.get(id);
@@ -358,19 +358,19 @@ describe('Job order transitions', () => {
     expect(result.runs).toMatchObject([
       {
         error: {
-          type: JobErrorType.error,
+          type: 'error',
           payload: { message: 'oh no !!' },
         },
       },
       {
         error: {
-          type: JobErrorType.error,
+          type: 'error',
           payload: { message: 'oh no 2 !!' },
         },
       },
       {
         error: {
-          type: JobErrorType.error,
+          type: 'error',
           payload: { message: 'oh no 3 !!' },
         },
       },
@@ -380,7 +380,7 @@ describe('Job order transitions', () => {
   it('Should fail an unprocessable job order', async () => {
     await service.startOrder(id);
     let errored = await service.errorProcessingOrder(id, {
-      type: JobErrorType.unprocessable,
+      type: 'unprocessable',
       payload: { message: 'oh no !!' },
     });
     expect(errored).toBe(true);
@@ -389,7 +389,7 @@ describe('Job order transitions', () => {
     expect(result.runs).toMatchObject([
       {
         error: {
-          type: JobErrorType.unprocessable,
+          type: 'unprocessable',
           payload: { message: 'oh no !!' },
         },
       },
@@ -399,7 +399,7 @@ describe('Job order transitions', () => {
   it('Should resume a failed job order', async () => {
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
-      type: JobErrorType.unprocessable,
+      type: 'unprocessable',
       payload: { message: 'oh no !!' },
     });
     let resumed = await service.resumeOrder(id);
@@ -599,7 +599,7 @@ describe('Job order with failing emitter', () => {
     let initialOrder = structuredClone(await repository.find(id));
     await expect(
       service.errorProcessingOrder(id, {
-        type: JobErrorType.error,
+        type: 'error',
         payload: {},
       })
     ).rejects.toThrow();
@@ -617,7 +617,7 @@ describe('Job order with failing emitter', () => {
     let initialOrder = structuredClone(await repository.find(id));
     await expect(
       service.errorProcessingOrder(id, {
-        type: JobErrorType.unprocessable,
+        type: 'unprocessable',
         payload: {},
       })
     ).rejects.toThrow();
@@ -630,12 +630,12 @@ describe('Job order with failing emitter', () => {
     let { id } = await service.requestOrder(type, {});
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
-      type: JobErrorType.error,
+      type: 'error',
       payload: {},
     });
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
-      type: JobErrorType.error,
+      type: 'error',
       payload: {},
     });
     await service.startOrder(id);
@@ -645,7 +645,7 @@ describe('Job order with failing emitter', () => {
     let initialOrder = structuredClone(await repository.find(id));
     await expect(
       service.errorProcessingOrder(id, {
-        type: JobErrorType.error,
+        type: 'error',
         payload: {},
       })
     ).rejects.toThrow();
@@ -679,7 +679,7 @@ describe('Job not found', () => {
   it('should fail erroring', async () => {
     await expect(
       service.errorProcessingOrder('42', {
-        type: JobErrorType.error,
+        type: 'error',
         payload: {},
       })
     ).rejects.toThrow();
