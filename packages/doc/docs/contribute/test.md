@@ -5,6 +5,7 @@ sidebar_position: 4
 # Test guidelines and tooling
 
 :::tip
+
 ## Test functionality not implementation
 
 Implementation should change, tests should warn you when the functionality is broken.
@@ -16,12 +17,12 @@ Implementation should change, tests should warn you when the functionality is br
 
 ```ts title="foo.ts"
 export const bar = (value: number) => {
-  return value+1;
-}
+  return value + 1;
+};
 ```
 
 ```ts title="foo.test.ts"
-import {bar} from './foo';
+import { bar } from './foo';
 
 describe('foo module', () => {
   it('should work as expected', () => {
@@ -42,7 +43,7 @@ import license from './base/licence';
 const router = express.Router();
 
 router.get('/foo', (req, res) => {
-  res.status(200).send({value: 42})
+  res.status(200).send({ value: 42 });
 });
 
 export default router;
@@ -57,11 +58,12 @@ const server = setupServer(app);
 
 describe('My router', () => {
   it('should give the correct response', () => {
-    return request(server).get('/foo')
+    return request(server)
+      .get('/foo')
       .expect(200)
-      .then(res => {
-        expect(res.body).toMatchObject({value: 42})
-      })
+      .then((res) => {
+        expect(res.body).toMatchObject({ value: 42 });
+      });
   });
 });
 ```
@@ -77,7 +79,7 @@ export const User = mongoose.model('User', schema);
 ```
 
 ```ts title="someRepository.test.ts"
-import initdb from 'src/db';
+import dbManager from 'src/db';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { User } from './someRepository';
@@ -85,14 +87,14 @@ import { User } from './someRepository';
 describe('db connection', () => {
   let dbServer: MongoMemoryServer;
   let connection: mongoose.Connection;
-  
+
   beforeAll(async () => {
     dbServer = await MongoMemoryServer.create();
-    connection = await initdb(dbServer.getUri());
+    connection = await dbManager.init(dbServer.getUri());
   });
 
   afterAll(() => {
-    connection.close();
+    dbManager.close();
     dbServer.stop();
   });
 

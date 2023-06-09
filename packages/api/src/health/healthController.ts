@@ -1,7 +1,5 @@
-import { Request, Response } from 'express';
-import { isAlive as serverOK } from 'src/server';
-import { isAlive as dbOk } from 'src/db';
-import { healtStatus } from '@dev-lambda/job-orders-dto';
+import { Request, Response, Router } from 'express';
+import healthProbe from './HealthProbe';
 
 /**
  * @openapi
@@ -52,28 +50,19 @@ import { healtStatus } from '@dev-lambda/job-orders-dto';
  *                   db: false
  */
 
-export const health = (_: Request, res: Response) => {
-  let server = serverOK();
-  let db = dbOk();
-  if (server && db) {
-    res.status(200);
-  } else {
-    res.status(500);
-  }
-  const result: healtStatus = { server, db };
-  return res.json(result);
+export const health = async (_: Request, res: Response) => {
+  return healthProbe.isAlive().then((report) => {
+    if (report.healthy) {
+      res.status(200);
+    } else {
+      res.status(500);
+    }
+    return res.json(report);
+  });
 };
 
-/**
- * @openapi
- * components:
- *   schemas:
- *     healtStatus:
- *       type: object
- *       properties:
- *         server:
- *           type: boolean
- *         db:
- *           type: boolean
- *
- */
+const router = Router();
+
+router.get('/health', health);
+
+export default router;

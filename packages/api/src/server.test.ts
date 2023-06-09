@@ -1,12 +1,12 @@
 import express from 'express';
 import request from 'supertest';
 import { explode, explodeAfterResponse } from './base/error';
-import init, { setupServer } from './server';
+import ServerManager, { setupServer } from './server';
 const server = setupServer();
 
 describe('server', () => {
   test('server initializes', async () => {
-    return init(null)
+    return ServerManager.init()
       .then((instance) => {
         expect(instance.address).not.toBeNull();
         instance.close();

@@ -2,10 +2,10 @@ import api from './metrics';
 import { setupServer } from 'src/server';
 import request from 'supertest';
 
-describe('licence api', () => {
+describe('Metrics endpoint', () => {
   const server = setupServer(api);
 
-  it('should get OpenAPI json specs', async () => {
+  it('should get application metrics', async () => {
     return request(server)
       .get('/metrics')
       .expect(200)

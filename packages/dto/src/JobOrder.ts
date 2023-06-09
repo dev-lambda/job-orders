@@ -6,7 +6,7 @@ import z from 'zod';
  */
 // @ts-ignore
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const GenericPayloadSchema = z.record(x.string(), z.any());
+export const GenericPayloadSchema = z.record(z.string(), z.any());
 
 export type GenericPayload = z.infer<typeof GenericPayloadSchema>;
 

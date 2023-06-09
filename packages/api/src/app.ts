@@ -1,11 +1,10 @@
 import express from 'express';
-import doc from './base/apiDoc';
-
+import doc from 'src/base/apiDoc';
+import jobOrders from 'src/jobOrderController/controller';
 const app = express.Router();
 
-// TODO: set application router here
+app.use('/job', jobOrders);
 
 // API documentation
 app.use(doc);
-
 export default app;

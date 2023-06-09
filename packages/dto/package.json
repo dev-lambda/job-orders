@@ -15,9 +15,9 @@
     "registry": "https://npm.pkg.github.com"
   },
   "main": "src/index.ts",
-  "types": "dist/src/index.d.ts",
+  "types": "src/index.ts",
   "files": [
-    "dist/*"
+    "src/*"
   ],
   "scripts": {
     "prod": "NODE_PATH=dist NODE_ENV=production node dist/src/index.js",

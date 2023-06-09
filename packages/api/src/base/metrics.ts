@@ -1,6 +1,7 @@
 import { Request, Response, Router } from 'express';
 import Prometheus from 'prom-client';
 import project from 'src/../package.json';
+import logger from 'src/logger';
 
 const { NODE_APP_INSTANCE } = process.env;
 
@@ -23,7 +24,8 @@ router.get('/metrics', async (req: Request, res: Response) => {
 
     res.send(metrics);
   } catch (error) {
-    res.status(500).send({ error });
+    logger.error('Failed retrieving metrics', error);
+    res.sendStatus(500);
   }
 });
 

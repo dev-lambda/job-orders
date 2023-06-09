@@ -21,3 +21,6 @@ mongodb:
     connectTimeoutMS: 1000
     serverSelectionTimeoutMS: 5000
     # keepAlive: true
+rabbitMq:
+  queue: 'job-orders'
+  url: 'amqp://localhost'

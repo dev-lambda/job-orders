@@ -36,7 +36,7 @@ export class MemoryJobOrderRepository implements JobOrderRepository {
   }
 
   find(id: string): Promise<GenericJobOrder> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       let order = this.orders.get(id);
       if (!order) {
         throw new Error(`Job order not found ${id}`);

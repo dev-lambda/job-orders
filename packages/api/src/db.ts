@@ -1,49 +1,103 @@
 import mongoose from 'mongoose';
 import logger from './logger';
 import config from 'config';
+import { ServiceManager } from './ServiceManager';
+import { ServiceHealthReport } from '@dev-lambda/job-orders-dto';
 
 const dbHost = config.get<string>('mongodb.host');
 const dbOptions = config.get<object>('mongodb.options');
 
-const initdb = (
-  useHost: string = dbHost,
-  options: mongoose.ConnectOptions = dbOptions
-): Promise<mongoose.Connection> => {
-  const dbUrlDebugInfo = new URL(useHost);
-  const { protocol, host, pathname } = dbUrlDebugInfo;
+export type MongoDbSettings = {
+  host?: string | undefined;
+  options?: mongoose.ConnectOptions | undefined;
+};
 
-  logger.debug(`Using db host ${protocol}//${host}${pathname}`); // strip user:password
+// prettier-ignore
+export class DbManager implements ServiceManager<MongoDbSettings, mongoose.Connection> {
+  private connection: mongoose.Connection | undefined;
 
-  return mongoose.connect(useHost, options).then((instance) => {
-    const connection = instance.connection;
+  name = 'Database';
 
-    // Force process to exit if connection lost
-    connection.on('error', (err) => {
-      throw err;
+  // strip user:password
+  private safeUrl(useHost: string): URL {
+    const dbUrlDebugInfo = new URL(useHost);
+    const { protocol, host, pathname } = dbUrlDebugInfo;
+    return new URL(`${protocol}//${host}${pathname}`);
+  }
+
+  async init({
+    host = dbHost,
+    options = dbOptions,
+  }: MongoDbSettings = {}): Promise<mongoose.Connection> {
+    if (this.connection !== undefined) {
+      logger.info('Db connection already initialized');
+      return Promise.resolve(this.connection);
+    }
+
+    const instance = await mongoose.connect(host, options).catch((error) => {
+      logger.error('Failed to connect to db', { host: this.safeUrl(host) });
+      throw error;
     });
 
-    connection.on('disconnected', () => {
+    logger.info('Connected to db', { host: this.safeUrl(host) });
+
+    this.connection = instance.connection;
+    // Force process to exit if connection lost
+    this.connection.on('error', (error) => {
+      logger.error('Db error', error);
+      throw error;
+    });
+
+    this.connection.on('disconnected', () => {
       logger.warn('Disconnected from db');
     });
 
-    connection.on('connected', () => {
+    this.connection.on('connected', () => {
       logger.warn('Reconnected to db');
     });
 
-    connection.on('close', () => {
+    this.connection.on('close', () => {
       logger.warn('Db connection closed');
     });
 
-    return connection;
-  });
-};
+    return this.connection;
+  }
 
-export const isAlive = () => {
-  let state = mongoose.connection.readyState;
-  return [
-    mongoose.ConnectionStates.connected,
-    mongoose.ConnectionStates.connecting,
-  ].includes(state);
-};
+  close(): Promise<void> {
+    if (this.connection === undefined) {
+      logger.info('Db connection already closed');
+      return Promise.resolve();
+    }
+    return this.connection
+      .close()
+      .catch((error) => {
+        logger.error('Db connection failed to close', error);
+      })
+      .then(() => {
+        logger.info('Db connection successfully closed');
+        this.connection = undefined;
+      });
+  }
 
-export default initdb;
+  isAlive(): Promise<ServiceHealthReport> {
+    if (this.connection === undefined) {
+      return Promise.resolve({healthy: false, name: this.name});
+    }
+
+    let state = this.connection.readyState;
+    return Promise.resolve({
+      healthy: [
+        mongoose.ConnectionStates.connected,
+        mongoose.ConnectionStates.connecting,
+      ].includes(state),
+      name: this.name,
+    });
+  }
+
+  getInstance(): mongoose.Connection | undefined {
+    return this.connection;
+  }
+}
+
+const singleton = new DbManager();
+export default singleton;

@@ -1,15 +1,19 @@
 import express from 'express';
 import config from 'config';
-import { apiLogger } from './logger';
+import logger, { apiLogger } from './logger';
 import cors from 'cors';
 import { Server } from 'http';
 import { notFound } from './base/notFound';
 import { ok } from './base/ok';
 import { error } from './base/error';
-import { health } from './base/health';
+import health from './health/healthController';
 import metrics from './base/metrics';
+import { ServiceManager } from './ServiceManager';
+import { ServiceHealthReport } from '@dev-lambda/job-orders-dto';
 
-const port = config.get('restApi.port');
+const apiPort = config.get<number>('restApi.port');
+
+// allows to instantiate a test-purpose (non listening) server
 
 export const setupServer = (...router: express.Router[]) => {
   const server = express();
@@ -30,37 +34,80 @@ export const setupServer = (...router: express.Router[]) => {
 
   // Base Routes
   server.get('/', ok);
-  server.get('/health', health);
+  server.use(health);
   server.use(metrics);
   server.use(notFound);
   server.use(error);
   return server;
 };
 
-let instance: Server;
+export type ServerOptions = {
+  router?: express.Router | undefined;
+  port?: number | undefined;
+};
 
-const init = (
-  router: express.Router | null,
-  options = { port }
-): Promise<Server> => {
-  let routers = [];
-  if (router) {
-    routers.push(router);
+export class ServerManager implements ServiceManager<ServerOptions, Server> {
+  private instance: Server | undefined;
+
+  name = 'APIServer';
+
+  init({ router, port = apiPort }: ServerOptions = {}): Promise<Server> {
+    // avoid initializing twice
+    if (this.instance !== undefined) {
+      logger.info('API Server already started');
+      return Promise.resolve(this.instance);
+    }
+
+    let routers = [];
+    if (router) {
+      routers.push(router);
+    }
+    const server = setupServer(...routers);
+    return new Promise((accept, reject) => {
+      this.instance = server
+        .listen(port, () => {
+          if (this.instance === undefined) {
+            logger.error('API Server failed to start');
+            return reject('API Server not initialized');
+          }
+          logger.info('API Server started', this.instance.address());
+          return accept(this.instance);
+        })
+        .on('error', (error) => {
+          throw new Error(`Unable to launch API server ${error}`);
+        });
+    });
   }
-  const server = setupServer(...routers);
-  return new Promise((accept) => {
-    instance = server
-      .listen(options.port, () => {
-        accept(instance);
-      })
-      .on('error', (error) => {
-        throw new Error(`Unable to launch server: Shutting down. ${error}`);
+
+  close(): Promise<void> {
+    return new Promise((accept, reject) => {
+      if (this.instance === undefined) {
+        logger.info('API Server already closed');
+        return accept();
+      }
+      this.instance.close((error) => {
+        if (error !== undefined) {
+          logger.error('API Server failed to closed', error);
+          return reject();
+        }
+        this.instance = undefined;
+        logger.info('API Server closed');
+        return accept();
       });
-  });
-};
+    });
+  }
 
-export const isAlive = () => {
-  return instance !== null && instance.listening;
-};
+  isAlive(): Promise<ServiceHealthReport> {
+    return Promise.resolve({
+      healthy: this.instance !== undefined && this.instance.listening,
+      name: this.name,
+    });
+  }
 
-export default init;
+  getInstance(): Server | undefined {
+    return this.instance;
+  }
+}
+
+const singleton = new ServerManager();
+export default singleton;

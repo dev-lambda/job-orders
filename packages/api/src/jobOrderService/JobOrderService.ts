@@ -196,6 +196,8 @@ export class JobOrderService {
   }
 
   async get(id: string) {
-    return this.repository.find(id);
+    return this.repository.find(id).catch((e) => {
+      throw new Error('not found', e);
+    });
   }
 }

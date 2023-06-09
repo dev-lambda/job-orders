@@ -1,4 +1,4 @@
-import initdb from './db';
+import dbManager from './db';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
@@ -14,8 +14,8 @@ describe('db connection', () => {
 
   it('should connect to a running db', async () => {
     const dbHost: string = dbServer.getUri();
-    const connection = await initdb(dbHost);
+    const connection = await dbManager.init({ host: dbHost });
     expect(connection.readyState).toBe(mongoose.ConnectionStates.connected);
-    connection.close();
+    await dbManager.close();
   });
 });

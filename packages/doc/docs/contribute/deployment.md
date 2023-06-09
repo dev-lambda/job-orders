@@ -38,6 +38,33 @@ Make sure a mongodb instance is running locally
   docker start mongodb-dev
   ```
 
+### Launch a development instance of rabbitMQ (if needed) {#rabbitMQ}
+
+Create a local network for dependent docker instances (once only, optional)
+
+```sh
+docker network create local
+```
+
+Make sure a rabbitMQ instance is running locally
+
+- Create a new docker instance for rabbitMQ (only once)
+
+  ```sh
+  docker run \
+    --net local \
+    -d \
+    --name rabbitmq-dev \
+    -p 15672:15672 \
+    -p 5672:5672 \
+    rabbitmq:3-management
+  ```
+
+- ... or simply start an already created instance
+  ```sh
+  docker start mongodb-dev
+  ```
+
 ### Run the image connecting it to your local mongodb instance
 
 ```sh
