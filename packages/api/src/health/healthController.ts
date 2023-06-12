@@ -1,54 +1,68 @@
 import { Request, Response, Router } from 'express';
 import healthProbe from './HealthProbe';
+import registry from 'src/doc/openApi';
+import { HealthReportSchema } from '@dev-lambda/job-orders-dto';
 
-/**
- * @openapi
- * tags:
- *   - name: Monitoring
- *     description: Monitoring and health check features
- */
-
-/**
- * @openapi
- * /health:
- *   get:
- *     summary: Health probe
- *     description: Health probe for liveness and readiness check
- *     tags:
- *      - Monitoring
- *     responses:
- *       200:
- *         description: Returns `ok` status
- *         content:
- *           application/json:
- *             schema:
- *                $ref: '#/components/schemas/healtStatus'
- *             example:
- *               server: true
- *               db: true
- *       500:
- *         description: Either the db or the server is not working as expected
- *         content:
- *           application/json:
- *             schema:
- *                $ref: '#/components/schemas/healtStatus'
- *             examples:
- *               dbFail:
- *                 summary: the db connexion is faulty
- *                 value:
- *                   server: true
- *                   db: false
- *               serverFail:
- *                 summary: the api server is faulty
- *                 value:
- *                   server: false
- *                   db: true
- *               chaos:
- *                 summary: pure chaos
- *                 value:
- *                   server: false
- *                   db: false
- */
+registry.registerPath({
+  path: '/health',
+  method: 'get',
+  tags: ['Monitoring'],
+  summary: 'Health probe',
+  description: 'Health probe for liveness and readiness check',
+  responses: {
+    200: {
+      description: 'Returns `ok` status',
+      content: {
+        'application/json': {
+          schema: HealthReportSchema,
+          example: {
+            healthy: true,
+            report: [
+              {
+                name: 'APIServer',
+                healthy: true,
+              },
+              {
+                name: 'Database',
+                healthy: true,
+              },
+              {
+                name: 'MessageQueue',
+                healthy: true,
+              },
+            ],
+          },
+        },
+      },
+    },
+    500: {
+      description:
+        'Either one of the required sub-services is not working as expected',
+      content: {
+        'application/json': {
+          schema: HealthReportSchema,
+          example: {
+            healthy: false,
+            report: [
+              {
+                name: 'APIServer',
+                healthy: true,
+              },
+              {
+                name: 'Database',
+                healthy: true,
+              },
+              {
+                name: 'MessageQueue',
+                healthy: false,
+              },
+            ],
+          },
+        },
+      },
+    },
+  },
+});
 
 export const health = async (_: Request, res: Response) => {
   return healthProbe.isAlive().then((report) => {

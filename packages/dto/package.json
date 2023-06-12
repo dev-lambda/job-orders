@@ -32,6 +32,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^5.1.0",
     "zod": "^3.21.4"
   }
 }

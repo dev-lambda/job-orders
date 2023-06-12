@@ -1,4 +1,4 @@
-import z from 'zod';
+import z from './zod';
 
 /**
  * The payload is dependent on the job type. As such, no type assumptions can be made at this level.
@@ -11,10 +11,24 @@ export const GenericPayloadSchema = z.record(z.string(), z.any());
 export type GenericPayload = z.infer<typeof GenericPayloadSchema>;
 
 export const JobParamsSchema = z.object({
-  maxRetry: z.number().int().nonnegative(),
-  schedule: z.date().optional(),
-  expiresAt: z.date().optional(),
-  timeout: z.number().optional(), // in seconds
+  maxRetry: z
+    .number()
+    .int()
+    .nonnegative()
+    .openapi({ description: 'Max job retry count', example: 1, default: 3 }),
+  schedule: z.date().optional().openapi({
+    description: 'Schedule job date',
+    // example: new Date('2023-01-01').toISOString(),
+  }),
+  expiresAt: z.date().optional().openapi({
+    description: 'Expiration date',
+    // example: new Date('2023-31-12').toISOString(),
+  }),
+  timeout: z.number().optional().openapi({
+    description: 'Indicative job order timeout (in seconds)',
+    example: 10,
+    default: 300,
+  }),
 });
 
 export type JobParams = z.infer<typeof JobParamsSchema>;
@@ -54,15 +68,24 @@ export type JobRun = z.infer<typeof JobRunSchema>;
 
 export const JobOrderSchemaGenerator = <T extends z.ZodTypeAny>(schema: T) =>
   z.object({
-    type: z.string(),
-    payload: schema,
-    params: JobParamsSchema,
-    status: JobStatusSchema,
-    runs: z.array(JobRunSchema),
+    type: z.string().openapi({ description: 'The job order type' }),
+    payload: schema.openapi({
+      description:
+        'The payload to be transmitted to the job processing process',
+    }),
+    params: JobParamsSchema.openapi({
+      description: 'The resolved parameters for the job',
+    }),
+    status: JobStatusSchema.openapi({
+      description: 'The lifecycle status of the job order',
+    }),
+    runs: z
+      .array(JobRunSchema)
+      .openapi({ description: 'A log of the processing outcomes' }),
   });
 
 export const GenericJobOrderSchema =
-  JobOrderSchemaGenerator(GenericPayloadSchema);
+  JobOrderSchemaGenerator(GenericPayloadSchema).openapi('JobOrder');
 
 export type GenericJobOrder = z.infer<typeof GenericJobOrderSchema>;
 

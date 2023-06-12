@@ -1,8 +1,8 @@
-import api from './apiDoc';
+import api from './controller';
 import { setupServer } from 'src/server';
 import request from 'supertest';
 
-describe('licence api', () => {
+describe('api doc', () => {
   const server = setupServer(api);
 
   it('should get OpenAPI json specs', async () => {

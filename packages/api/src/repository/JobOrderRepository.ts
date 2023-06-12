@@ -1,4 +1,10 @@
-import { GenericJobOrder, JobRun, JobStatus } from '@dev-lambda/job-orders-dto';
+import {
+  GenericJobOrder,
+  GenericJobOrderSchema,
+  JobRun,
+  JobStatus,
+  z,
+} from '@dev-lambda/job-orders-dto';
 
 export interface JobOrderRepository {
   create(order: GenericJobOrder): Promise<PersistedJobOrder>;
@@ -8,6 +14,8 @@ export interface JobOrderRepository {
   delete(id: string): Promise<boolean>;
 }
 
-export interface PersistedJobOrder extends GenericJobOrder {
-  id: string;
-}
+export const PersistedJobOrderSchema = GenericJobOrderSchema.extend({
+  id: z.string().openapi({ description: 'The id assigned to the job order.' }),
+}).openapi('PersistedJobOrder');
+
+export type PersistedJobOrder = z.infer<typeof PersistedJobOrderSchema>;

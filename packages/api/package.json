@@ -23,7 +23,8 @@
     "test": "jest --detectOpenHandles",
     "test:watch": "jest --watch --detectOpenHandles src",
     "lint": "eslint .",
-    "dumpApiSpec": "ts-node src/base/dumpOpenApi.ts"
+    "dumpApiSpec": "NODE_ENV=production ts-node src/doc/dumpOpenApi.ts",
+    "dumpApiSpec:watch": "nodemon --config nodemon.dumpOpenApi.json"
   },
   "devDependencies": {
     "@dev-lambda/job-orders-dto": "^1.0.0",
@@ -39,6 +40,7 @@
     "supertest": "^6.3.3"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^5.1.0",
     "amqplib": "^0.10.3",
     "config": "^3.3.9",
     "cors": "^2.8.5",

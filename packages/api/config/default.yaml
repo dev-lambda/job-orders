@@ -3,17 +3,21 @@ restApi:
   baseUrl: 'http://localhost'
 logLevel: 'info'
 openAPI:
-  license:
-    name: ISC
-    url: https://dev-lambda.github.io/job-orders/license
-  termsOfService: https://dev-lambda.github.io/job-orders/terms
-  contact:
-    name: API Support
-    email: support@devlambda.com
-    url: http://dev-lambda.github.io/job-orders/support
+  info:
+    license:
+      name: ISC
+      url: https://dev-lambda.github.io/job-orders/license
+    termsOfService: https://dev-lambda.github.io/job-orders/terms
+    contact:
+      name: API Support
+      email: support@devlambda.com
+      url: https://dev-lambda.github.io/job-orders/support
   externalDocs:
     description: Full documentation site
     url: https://dev-lambda.github.io/job-orders/
+  servers:
+    - url: '/'
+      description: 'This server'
 mongodb:
   host: mongodb://localhost:27017/default
   options:

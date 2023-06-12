@@ -1,14 +1,22 @@
-import z from 'zod';
+import z from './zod';
 
 export const ServiceHealthReportSchema = z.object({
-  healthy: z.boolean(),
-  name: z.string(),
+  healthy: z
+    .boolean()
+    .openapi({ description: 'The specific service health status' }),
+  name: z.string().openapi({ description: 'The specific service name' }),
 });
 
-export const HealthReportSchema = z.object({
-  healthy: z.boolean(),
-  report: z.array(ServiceHealthReportSchema),
-});
+export const HealthReportSchema = z
+  .object({
+    healthy: z
+      .boolean()
+      .openapi({ description: 'The overall health status of the service' }),
+    report: z
+      .array(ServiceHealthReportSchema)
+      .openapi({ description: 'A status report per sub-sevice' }),
+  })
+  .openapi('HealthReport');
 
 /**
  * @openapi

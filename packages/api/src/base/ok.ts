@@ -1,44 +1,29 @@
 import { Request, Response } from 'express';
-import { message } from '@dev-lambda/job-orders-dto';
-/**
- * @openapi
- * /:
- *   get:
- *     summary: Base response
- *     description: The default `200 OK` response at the root
- *     tags:
- *       - API
- *     responses:
- *       200:
- *         description: The `ok` response
- *         content:
- *           application/json:
- *             schema:
- *                $ref: '#/components/schemas/message'
- *             example:
- *               message: "ok"
- */
+import { message, messageSchema } from '@dev-lambda/job-orders-dto';
+import registry from 'src/doc/openApi';
+
+registry.registerPath({
+  method: 'get',
+  path: '/',
+  summary: 'Base response',
+  description: 'The default `200 OK` response at the root',
+  tags: ['Base'],
+  responses: {
+    200: {
+      description: 'The `ok` response',
+      content: {
+        'application/json': {
+          schema: messageSchema,
+          example: {
+            message: 'ok',
+          },
+        },
+      },
+    },
+  },
+});
+
 export const ok = (_: Request, res: Response) => {
   const result: message = { message: 'ok' };
   return res.status(200).json(result);
 };
-
-/**
- * @openapi
- * components:
- *   schemas:
- *     message:
- *       type: object
- *       properties:
- *         message:
- *           type: string
- */
-
-/**
- * @openapi
- * tags:
- *   - name: API
- *     description: API specific routes
- *     externalDocs:
- *       url: https://dev-lambda.github.io/job-orders/
- */

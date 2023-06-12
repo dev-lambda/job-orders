@@ -1,2 +1,15 @@
 mongodb:
   host: mongodb://localhost:27017/dev
+openAPI:
+  info:
+    license:
+      name: ISC
+      url: http://localhost:3500/job-orders/license
+    termsOfService: http://localhost:3500/job-orders/terms
+    contact:
+      name: API Support
+      email: support@devlambda.com
+      url: http://localhost:3500/job-orders/support
+  externalDocs:
+    description: Full documentation site
+    url: http://localhost:3500/job-orders/
