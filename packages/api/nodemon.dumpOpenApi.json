@@ -2,6 +2,6 @@
   "watch": ["src", "config"],
   "ext": "ts,json,yaml",
   "ignore": ["src/**/*.spec.ts", "src/**/*.test.ts"],
-  "exec": "node --inspect --loader ts-node/esm  ./src/doc/dumpOpenApi.ts",
+  "exec": "node --loader ts-node/esm  ./src/doc/dumpOpenApi.ts",
   "inspect": true
 }

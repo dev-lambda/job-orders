@@ -2,12 +2,10 @@ import { Router, Request, Response } from 'express';
 import swaggerUi, { SwaggerUiOptions } from 'swagger-ui-express';
 import registry, { openapiSpecification } from './openApi';
 import project from 'src/../package.json';
-// import { OpenAPIV3 } from '@asteasolutions/zod-to-openapi';
 import { z } from '@dev-lambda/job-orders-dto';
 const { name } = project;
 
-// TODO construct correct schema from OpenAPIV3.OpenAPIObject
-
+// API dpcumentation
 registry.registerPath({
   path: '/openAPI',
   summary: 'Get the OpenAPI json description for this API',

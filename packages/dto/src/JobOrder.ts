@@ -11,20 +11,20 @@ export const GenericPayloadSchema = z.record(z.string(), z.any());
 export type GenericPayload = z.infer<typeof GenericPayloadSchema>;
 
 export const JobParamsSchema = z.object({
-  maxRetry: z
+  maxRetry: z.coerce
     .number()
     .int()
     .nonnegative()
     .openapi({ description: 'Max job retry count', example: 1, default: 3 }),
-  schedule: z.date().optional().openapi({
+  schedule: z.coerce.date().optional().openapi({
     description: 'Schedule job date',
     // example: new Date('2023-01-01').toISOString(),
   }),
-  expiresAt: z.date().optional().openapi({
+  expiresAt: z.coerce.date().optional().openapi({
     description: 'Expiration date',
     // example: new Date('2023-31-12').toISOString(),
   }),
-  timeout: z.number().optional().openapi({
+  timeout: z.coerce.number().optional().openapi({
     description: 'Indicative job order timeout (in seconds)',
     example: 10,
     default: 300,

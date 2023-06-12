@@ -8,6 +8,7 @@ import { ok } from './base/ok';
 import { error } from './base/error';
 import health from './health/healthController';
 import metrics from './base/metrics';
+import doc from './doc/controller';
 import { ServiceManager } from './ServiceManager';
 import { ServiceHealthReport } from '@dev-lambda/job-orders-dto';
 
@@ -36,6 +37,7 @@ export const setupServer = (...router: express.Router[]) => {
   server.get('/', ok);
   server.use(health);
   server.use(metrics);
+  server.use(doc);
   server.use(notFound);
   server.use(error);
   return server;

@@ -17,8 +17,7 @@ Prometheus.collectDefaultMetrics({
   // labels: { NODE_APP_INSTANCE },
 });
 
-const router = Router();
-
+// API dpcumentation
 registry.registerPath({
   path: '/metrics',
   method: 'get',
@@ -39,7 +38,7 @@ registry.registerPath({
   },
 });
 
-router.get('/metrics', async (req: Request, res: Response) => {
+const metrics = async (req: Request, res: Response) => {
   try {
     const metrics = await Prometheus.register.metrics();
     res.contentType(Prometheus.register.contentType);
@@ -49,6 +48,10 @@ router.get('/metrics', async (req: Request, res: Response) => {
     logger.error('Failed retrieving metrics', error);
     res.sendStatus(500);
   }
-});
+};
+
+const router = Router();
+
+router.get('/metrics', metrics);
 
 export default router;

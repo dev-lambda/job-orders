@@ -12,6 +12,8 @@ import { EmitterService } from '../eventEmitter/EmitterService';
 
 // TODO use lock to make all operations atomic (concurrency safe)
 
+// TODO expose meaningful errors for better error handling
+
 export class JobOrderService {
   private static defaultParams: JobParams = {
     maxRetry: 3,
@@ -45,7 +47,7 @@ export class JobOrderService {
     );
     if (!queued) {
       await this.repository.delete(id);
-      throw new Error(`Unabled to queue job ${id}`);
+      throw new Error(`Unable to queue job ${id}`);
     }
     let event = await this.emitter.shout('jobRequested', {
       id,
@@ -54,13 +56,13 @@ export class JobOrderService {
     if (!event) {
       await this.repository.delete(id);
       await this.queuer.unqueue(id);
-      throw new Error(`Unabled to notify job event ${id}`);
+      throw new Error(`Unable to notify job event ${id}`);
     }
     return persistedJob;
   }
 
   async cancelOrder(id: string) {
-    let order = await this.repository.find(id);
+    let order = await this.repository.find(id).catch();
     let { status, type } = order;
     if (status !== 'pending') {
       throw new Error(`Invalid order status, expecting pending, got ${status}`);
@@ -70,7 +72,7 @@ export class JobOrderService {
     if (!event) {
       // await this.repository.delete(id);
       // await this.queuer.unqueue(id);
-      throw new Error(`Unabled to notify job event ${id}`);
+      throw new Error(`Unable to notify job event ${id}`);
     }
     return this.repository.setStatus(id, 'cancelled');
   }
@@ -83,7 +85,7 @@ export class JobOrderService {
     }
     let event = await this.emitter.shout('jobStarted', { id, type });
     if (!event) {
-      throw new Error(`Unabled to notify job event ${id}`);
+      throw new Error(`Unable to notify job event ${id}`);
     }
     return await this.repository.setStatus(id, 'processing');
   }
@@ -107,7 +109,7 @@ export class JobOrderService {
         error,
       });
       if (!event) {
-        throw new Error(`Unabled to notify job event ${id}`);
+        throw new Error(`Unable to notify job event ${id}`);
       }
       newStatus = 'failed';
     } else if (currentRetries + 1 >= maxRetry) {
@@ -117,7 +119,7 @@ export class JobOrderService {
         error,
       });
       if (!event) {
-        throw new Error(`Unabled to notify job event ${id}`);
+        throw new Error(`Unable to notify job event ${id}`);
       }
       newStatus = 'failed';
     } else {
@@ -127,7 +129,7 @@ export class JobOrderService {
         error,
       });
       if (!event) {
-        throw new Error(`Unabled to notify job event ${id}`);
+        throw new Error(`Unable to notify job event ${id}`);
       }
       newStatus = 'pending';
     }
@@ -148,7 +150,7 @@ export class JobOrderService {
       type,
     });
     if (!event) {
-      throw new Error(`Unabled to notify job event ${id}`);
+      throw new Error(`Unable to notify job event ${id}`);
     }
     return await this.repository.setStatus(id, 'pending');
   }
@@ -167,7 +169,7 @@ export class JobOrderService {
       result,
     });
     if (!event) {
-      throw new Error(`Unabled to notify job event ${id}`);
+      throw new Error(`Unable to notify job event ${id}`);
     }
     /*let updatedOrder =*/ await this.repository.addRun(id, { result });
     return this.repository.setStatus(id, 'completed');
@@ -188,7 +190,7 @@ export class JobOrderService {
         asOf,
       });
       if (!event) {
-        throw new Error(`Unabled to notify job event ${id}`);
+        throw new Error(`Unable to notify job event ${id}`);
       }
       return this.repository.setStatus(id, 'cancelled');
     }

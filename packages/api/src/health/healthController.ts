@@ -3,6 +3,7 @@ import healthProbe from './HealthProbe';
 import registry from 'src/doc/openApi';
 import { HealthReportSchema } from '@dev-lambda/job-orders-dto';
 
+// API dpcumentation
 registry.registerPath({
   path: '/health',
   method: 'get',
@@ -64,7 +65,7 @@ registry.registerPath({
   },
 });
 
-export const health = async (_: Request, res: Response) => {
+const health = async (_: Request, res: Response) => {
   return healthProbe.isAlive().then((report) => {
     if (report.healthy) {
       res.status(200);

@@ -1,9 +1,9 @@
 import logger from './logger';
+import app from './app'; // initialize documentation before instantiating server doc endpoint
 import serverManager from './server';
 import dbManager from './db';
 import queueManager from 'src/messageQueue';
 import healthProbe from 'src/health/HealthProbe';
-import app from './app';
 
 const startTime = Date.now();
 
@@ -16,6 +16,12 @@ process.on('SIGINT', async () => {
   logger.info('Exit requested by user');
   await cleanup();
   process.exit(0);
+});
+
+process.on('uncaughtException', async (error) => {
+  logger.error('Got uncaught exception', error);
+  await cleanup(); // Won't run as only sync treatments are allowed
+  process.exit(1);
 });
 
 logger.info('Starting service');

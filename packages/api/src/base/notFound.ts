@@ -5,6 +5,21 @@ import {
 import { Request, Response } from 'express';
 import registry from 'src/doc/openApi';
 
+export const notFoundResponse = {
+  404: {
+    description: 'Resource not found',
+    content: {
+      'application/json': {
+        schema: notFoundMessageSchema,
+        example: {
+          message: 'not found',
+          path: '/wrongPath',
+        },
+      },
+    },
+  },
+};
+
 registry.registerPath({
   method: 'get',
   path: '/wrongPath',
@@ -12,23 +27,16 @@ registry.registerPath({
   description: 'The response given on any unknown path',
   tags: ['Base'],
   responses: {
-    404: {
-      description: 'The `not found` response',
-      content: {
-        'application/json': {
-          schema: notFoundMessageSchema,
-          example: {
-            message: 'not found',
-            path: '/wrongPath',
-          },
-        },
-      },
-    },
+    ...notFoundResponse,
   },
 });
 
 export const notFound = (req: Request, res: Response) => {
-  const { path } = req;
-  const result: Partial<notFoundMessage> = { message: 'not found', path };
+  const { path, params } = req;
+  const result: Partial<notFoundMessage> = {
+    message: 'not found',
+    path,
+    params,
+  };
   return res.status(404).json(result);
 };
