@@ -21,6 +21,8 @@ jobs:
           cache: npm
       - name: Install base project dependencies
         run: npm ci
+      - name: Ensure dto definitions are built
+        run: npm run build -w @dev-lambda/api-template-dto
       - name: Generate and dump specs
         run: npm run dumpApiSpec -w @dev-lambda/job-orders
       - name: Build website

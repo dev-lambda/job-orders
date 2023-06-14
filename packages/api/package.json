@@ -27,7 +27,6 @@
     "dumpApiSpec:watch": "nodemon --config nodemon.dumpOpenApi.json"
   },
   "devDependencies": {
-    "@dev-lambda/job-orders-dto": "^1.0.0",
     "@types/amqplib": "^0.10.1",
     "@types/config": "^3.3.0",
     "@types/cors": "^2.8.13",
@@ -41,6 +40,7 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^5.1.0",
+    "@dev-lambda/job-orders-dto": "^1.0.0",
     "amqplib": "^0.10.3",
     "config": "^3.3.9",
     "cors": "^2.8.5",
@@ -48,7 +48,6 @@
     "js-yaml": "^4.1.0",
     "mongoose": "^7.0.1",
     "morgan": "^1.10.0",
-    "passport": "^0.6.0",
     "prom-client": "^14.2.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^4.6.2",

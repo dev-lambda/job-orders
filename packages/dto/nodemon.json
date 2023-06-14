@@ -1,0 +1,7 @@
+{
+  "watch": ["src", "config"],
+  "ext": "ts,json,yaml",
+  "ignore": ["src/**/*.spec.ts", "src/**/*.test.ts"],
+  "exec": "tsc --project tsconfig.production.json",
+  "inspect": true
+}

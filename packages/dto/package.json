@@ -14,14 +14,14 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
-  "main": "src/index.ts",
+  "main": "dist/src/index.js",
+  "module": "src/index.ts",
   "types": "src/index.ts",
   "files": [
+    "dist/*",
     "src/*"
   ],
   "scripts": {
-    "prod": "NODE_PATH=dist NODE_ENV=production node dist/src/index.js",
-    "start": "ts-node src/index.ts",
     "watch": "nodemon",
     "prepublish": "tsc --project tsconfig.production.json",
     "build": "tsc --project tsconfig.production.json",
