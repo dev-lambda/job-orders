@@ -6,13 +6,45 @@ import {
   JobEvents,
   JobStatus,
 } from '@dev-lambda/job-orders-dto';
-import { JobOrderRepository } from '../repository/JobOrderRepository';
+import {
+  JobOrderRepository,
+  PersistedJobOrder,
+} from '../repository/JobOrderRepository';
 import { JobQueuer } from '../queuer/JobQueuer';
 import { EmitterService } from '../eventEmitter/EmitterService';
 
 // TODO use lock to make all operations atomic (concurrency safe)
 
-// TODO expose meaningful errors for better error handling
+export class JobOrderUnableToNotify extends Error {
+  constructor(
+    message: string,
+    readonly type: JobEvents,
+    readonly payload: GenericPayload,
+    options?: ErrorOptions
+  ) {
+    super(message, options);
+  }
+}
+
+export class JobOrderUnableToQueue extends Error {}
+
+export class JobOrderNotFound extends Error {
+  constructor(message: string, readonly id: string, options?: ErrorOptions) {
+    super(message, options);
+  }
+}
+
+export class JobOrderInvalidTransition extends Error {
+  constructor(
+    message: string,
+    readonly from: JobStatus,
+    readonly to: JobStatus,
+    readonly expected: JobStatus[],
+    options?: ErrorOptions
+  ) {
+    super(message, options);
+  }
+}
 
 export class JobOrderService {
   private static defaultParams: JobParams = {
@@ -26,180 +58,185 @@ export class JobOrderService {
     private emitter: EmitterService<JobEvents, GenericPayload>
   ) {}
 
+  private async transitionIf(
+    id: string,
+    to: JobStatus | ((order: GenericJobOrder) => JobStatus),
+    from: JobStatus[],
+    callback: (order: GenericJobOrder, to: JobStatus) => Promise<boolean>
+  ): Promise<PersistedJobOrder> {
+    let order = await this.get(id);
+    let { status } = order;
+
+    let resolvedTo: JobStatus;
+    if (typeof to === 'string') {
+      resolvedTo = to;
+    } else {
+      resolvedTo = to(order);
+    }
+
+    if (!from.includes(status)) {
+      throw new JobOrderInvalidTransition(
+        'Invalid order status',
+        status, // actual from
+        resolvedTo,
+        from // expected from
+      );
+    }
+
+    return callback(order, resolvedTo).then((success) => {
+      if (success) {
+        return this.repository.setStatus(id, resolvedTo);
+      }
+      return order;
+    });
+  }
+
+  private async notify(
+    eventType: JobEvents,
+    payload: GenericPayload
+  ): Promise<boolean> {
+    return this.emitter
+      .shout(eventType, payload)
+      .catch((cause) => {
+        throw new JobOrderUnableToNotify(
+          'Unable to notify job event',
+          eventType,
+          payload,
+          { cause }
+        );
+      })
+      .then(() => true);
+  }
+
   async requestOrder(
     type: string,
     payload: GenericPayload,
     params: Partial<JobParams> = {}
-  ) {
+  ): Promise<PersistedJobOrder> {
     let resolvedParams = { ...JobOrderService.defaultParams, ...params };
     let order: GenericJobOrder = {
       type,
       payload,
       params: resolvedParams,
-      status: 'pending',
+      status: 'creating',
       runs: [],
     };
     let persistedJob = await this.repository.create(order);
     let { id } = persistedJob;
-    let queued = await this.queuer.queue(
-      persistedJob.id,
-      resolvedParams.schedule
+
+    return this.transitionIf(
+      id,
+      'pending',
+      ['creating'],
+      async ({ type, params }) => {
+        await this.queuer.queue(id, params.schedule).catch((cause) => {
+          throw new JobOrderUnableToQueue(`Unable to queue job ${id}`, {
+            cause,
+          });
+        });
+        return this.notify('jobRequested', { id, type }).catch((error) => {
+          this.queuer.unqueue(id); // attempt to clean queue
+          throw error;
+        });
+      }
     );
-    if (!queued) {
-      await this.repository.delete(id);
-      throw new Error(`Unable to queue job ${id}`);
-    }
-    let event = await this.emitter.shout('jobRequested', {
+  }
+
+  // prettier-ignore
+  cancelOrder(id: string): Promise<PersistedJobOrder> {
+    return this.transitionIf(
       id,
-      type,
-    });
-    if (!event) {
-      await this.repository.delete(id);
-      await this.queuer.unqueue(id);
-      throw new Error(`Unable to notify job event ${id}`);
-    }
-    return persistedJob;
+      'cancelled',
+      ['pending'],
+      ({type}) => this.notify('jobCancelled', { id, type })
+    );
   }
 
-  async cancelOrder(id: string) {
-    let order = await this.repository.find(id).catch();
-    let { status, type } = order;
-    if (status !== 'pending') {
-      throw new Error(`Invalid order status, expecting pending, got ${status}`);
-    }
-    await this.queuer.unqueue(id);
-    let event = await this.emitter.shout('jobCancelled', { id, type });
-    if (!event) {
-      // await this.repository.delete(id);
-      // await this.queuer.unqueue(id);
-      throw new Error(`Unable to notify job event ${id}`);
-    }
-    return this.repository.setStatus(id, 'cancelled');
-  }
-
-  async startOrder(id: string) {
-    let order = await this.repository.find(id);
-    let { status, type } = order;
-    if (status !== 'pending') {
-      throw new Error(`Invalid order status, expecting pending, got ${status}`);
-    }
-    let event = await this.emitter.shout('jobStarted', { id, type });
-    if (!event) {
-      throw new Error(`Unable to notify job event ${id}`);
-    }
-    return await this.repository.setStatus(id, 'processing');
-  }
-
-  async errorProcessingOrder(id: string, error: JobError) {
-    let order = await this.repository.find(id);
-    let { status, type } = order;
-    if (status !== 'processing') {
-      throw new Error(
-        `Invalid order status, expecting processing, got ${status}`
-      );
-    }
-    let { maxRetry } = order.params;
-    let currentRetries = order.runs.length;
-
-    let newStatus: JobStatus;
-    if (error.type === 'unprocessable') {
-      let event = await this.emitter.shout('jobUnprocessable', {
-        id,
-        type,
-        error,
-      });
-      if (!event) {
-        throw new Error(`Unable to notify job event ${id}`);
-      }
-      newStatus = 'failed';
-    } else if (currentRetries + 1 >= maxRetry) {
-      let event = await this.emitter.shout('jobMaxErrorReached', {
-        id,
-        type,
-        error,
-      });
-      if (!event) {
-        throw new Error(`Unable to notify job event ${id}`);
-      }
-      newStatus = 'failed';
-    } else {
-      let event = await this.emitter.shout('jobError', {
-        id,
-        type,
-        error,
-      });
-      if (!event) {
-        throw new Error(`Unable to notify job event ${id}`);
-      }
-      newStatus = 'pending';
-    }
-    await this.repository.addRun(id, { error });
-    return this.repository.setStatus(id, newStatus);
-  }
-
-  async resumeOrder(id: string) {
-    let order = await this.repository.find(id);
-    let { status, type } = order;
-    if (!['cancelled', 'failed'].includes(status)) {
-      throw new Error(
-        `Invalid order status, expecting cancelled or failed, got ${status}`
-      );
-    }
-    let event = await this.emitter.shout('jobResumed', {
+  // prettier-ignore
+  startOrder(id: string): Promise<PersistedJobOrder> {
+    return this.transitionIf(
       id,
-      type,
-    });
-    if (!event) {
-      throw new Error(`Unable to notify job event ${id}`);
-    }
-    return await this.repository.setStatus(id, 'pending');
+      'processing',
+      ['pending'],
+      ({type}) => this.notify('jobStarted', { id, type })
+    );
   }
 
-  async completeOrder(id: string, result: GenericPayload) {
-    let order = await this.repository.find(id);
-    let { status, type } = order;
-    if (status !== 'processing') {
-      throw new Error(
-        `Invalid order status, expecting processing, got ${status}`
-      );
-    }
-    let event = await this.emitter.shout('jobSuccess', {
-      id,
-      type,
-      result,
-    });
-    if (!event) {
-      throw new Error(`Unable to notify job event ${id}`);
-    }
-    /*let updatedOrder =*/ await this.repository.addRun(id, { result });
-    return this.repository.setStatus(id, 'completed');
-  }
-
-  async expireOrder(id: string, asOf: Date = new Date()) {
-    let order = await this.repository.find(id);
-    let { status, type } = order;
-    let { expiresAt } = order.params;
-    if (status !== 'pending') {
-      throw new Error(`Invalid order status, expecting pending, got ${status}`);
-    }
-    if (expiresAt && expiresAt <= asOf) {
-      await this.queuer.unqueue(id);
-      let event = await this.emitter.shout('jobExpired', {
-        id,
-        type,
-        asOf,
-      });
-      if (!event) {
-        throw new Error(`Unable to notify job event ${id}`);
+  // prettier-ignore
+  errorProcessingOrder(id: string, error: JobError): Promise<PersistedJobOrder> {
+    const transitionStatus = ({ runs, params }: GenericJobOrder): JobStatus => {
+      let { maxRetry } = params;
+      let currentRetries = runs.length;
+      if (error.type === 'unprocessable' || currentRetries + 1 >= maxRetry) {
+        return 'failed';
       }
-      return this.repository.setStatus(id, 'cancelled');
-    }
-    return false;
+      return 'pending';
+    };
+
+    return this.transitionIf(
+      id,
+      transitionStatus,
+      ['processing'],
+      async ({ type, runs, params }): Promise<boolean> => {
+        let { maxRetry } = params;
+        let currentRetries = runs.length;
+        let event: JobEvents = 'jobError';
+        if (error.type === 'unprocessable') {
+          event = 'jobUnprocessable';
+        }
+        else if (currentRetries + 1 >= maxRetry) {
+          event = 'jobMaxErrorReached';
+        }
+        await this.notify(event, { id, type, error });
+        await this.repository.addRun(id, { error });
+        return true;
+      }
+    );
   }
 
-  async get(id: string) {
-    return this.repository.find(id).catch((e) => {
-      throw new Error('not found', e);
+  // prettier-ignore
+  resumeOrder(id: string): Promise<PersistedJobOrder> {
+    return this.transitionIf(
+      id,
+      'pending',
+      ['cancelled', 'failed'],
+      ({ type }) => this.notify('jobResumed', { id, type })
+    );
+  }
+
+  // prettier-ignore
+  completeOrder(id: string, result: GenericPayload): Promise<PersistedJobOrder> {
+    return this.transitionIf(
+      id,
+      'completed',
+      ['processing'],
+      async ({type}): Promise<boolean> => {
+        await this.notify('jobSuccess', { id, type, result });
+        await this.repository.addRun(id, { result });
+        return true;
+      }
+    );
+  }
+
+  // prettier-ignore
+  expireOrder(id: string, asOf: Date = new Date()): Promise<PersistedJobOrder> {
+    return this.transitionIf(
+      id,
+      'cancelled',
+      ['pending'],
+      async ({ type, params }): Promise<boolean> => {
+        let { expiresAt } = params;
+        if (expiresAt && expiresAt <= asOf) {
+          return this.notify('jobExpired', { id, type });
+        }
+        return Promise.resolve(false);
+      }
+    );
+  }
+
+  async get(id: string): Promise<PersistedJobOrder> {
+    return this.repository.find(id).catch((cause) => {
+      throw new JobOrderNotFound('Not found', id, { cause });
     });
   }
 }

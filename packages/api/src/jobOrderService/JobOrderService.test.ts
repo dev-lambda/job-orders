@@ -1,7 +1,13 @@
 import { JobParams } from '@dev-lambda/job-orders-dto';
 import { TestEmitterService } from 'src/eventEmitter/TestEmitterService';
 import { MemoryJobOrderRepository } from 'src/repository/MemoryJobOrderRepository';
-import { JobOrderService } from './JobOrderService';
+import {
+  JobOrderInvalidTransition,
+  JobOrderNotFound,
+  JobOrderService,
+  JobOrderUnableToNotify,
+  JobOrderUnableToQueue,
+} from './JobOrderService';
 import { MemoryJobQueuer } from 'src/queuer/MemoryJobQueuer';
 
 describe('Job order request', () => {
@@ -46,7 +52,7 @@ describe('Job order request', () => {
     let { id, ...order } = persistedJobOrder;
     expect(id).not.toBeNull();
 
-    let job = await repository.find(id);
+    let job = await service.get(id);
     expect(job).toMatchObject(order);
   });
 
@@ -147,6 +153,17 @@ describe('Job event emmission', () => {
     ).toMatchObject([{ payload: { id } }]);
   });
 
+  it(`Should emmit a ${'jobError'} event on timedout orders`, async () => {
+    await service.startOrder(id);
+    await service.errorProcessingOrder(id, {
+      type: 'timeout',
+      payload: { message: 'too long :(' },
+    });
+    expect(
+      emitter.findByType('jobError').filter((event) => event.payload.id === id)
+    ).toMatchObject([{ payload: { id } }]);
+  });
+
   it(`Should emmit a ${'jobUnprocessable'} event on unprocessable orders`, async () => {
     await service.startOrder(id);
     await service.errorProcessingOrder(id, {
@@ -208,35 +225,39 @@ describe('Job order transitions', () => {
 
   it('Should cancel a job order', async () => {
     let cancel = await service.cancelOrder(id);
-    expect(cancel).toBe(true);
+    expect(cancel.status).toBe('cancelled');
     let result = await service.get(id);
     expect(result.status).toBe('cancelled');
   });
 
   it('Should fail cancelling a cancelled job order', async () => {
     await service.cancelOrder(id);
-    await expect(service.cancelOrder(id)).rejects.toThrow();
+    await expect(service.cancelOrder(id)).rejects.toThrow(
+      JobOrderInvalidTransition
+    );
     let result = await service.get(id);
     expect(result.status).toBe('cancelled');
   });
 
   it('Should expire a job order', async () => {
     let expired = await service.expireOrder(id, tomorrow);
-    expect(expired).toBe(true);
+    expect(expired.status).toBe('cancelled');
     let result = await service.get(id);
     expect(result.status).toBe('cancelled');
   });
 
   it('Should not expire a job order if expiration not reached', async () => {
     let expired = await service.expireOrder(id, today);
-    expect(expired).toBe(false);
+    expect(expired.status).toBe('pending');
     let result = await service.get(id);
     expect(result.status).toBe('pending');
   });
 
   it('Should fail expiring a cancelled job order', async () => {
     await service.cancelOrder(id);
-    await expect(service.expireOrder(id, tomorrow)).rejects.toThrow();
+    await expect(service.expireOrder(id, tomorrow)).rejects.toThrow(
+      JobOrderInvalidTransition
+    );
     let result = await service.get(id);
     expect(result.status).toBe('cancelled');
   });
@@ -244,27 +265,31 @@ describe('Job order transitions', () => {
   it('Should resume a cancelled job order', async () => {
     await service.cancelOrder(id);
     let resumed = await service.resumeOrder(id);
-    expect(resumed).toBe(true);
+    expect(resumed.status).toBe('pending');
     let result = await service.get(id);
     expect(result.status).toBe('pending');
   });
 
   it('Should fail resuming a pending job order', async () => {
-    await expect(service.resumeOrder(id)).rejects.toThrow();
+    await expect(service.resumeOrder(id)).rejects.toThrow(
+      JobOrderInvalidTransition
+    );
     let result = await service.get(id);
     expect(result.status).toBe('pending');
   });
 
   it('Should start a pending job order', async () => {
     let started = await service.startOrder(id);
-    expect(started).toBe(true);
+    expect(started.status).toBe('processing');
     let result = await service.get(id);
     expect(result.status).toBe('processing');
   });
 
   it('Should fail starting a cancelled job order', async () => {
     await service.cancelOrder(id);
-    await expect(service.startOrder(id)).rejects.toThrow();
+    await expect(service.startOrder(id)).rejects.toThrow(
+      JobOrderInvalidTransition
+    );
     let result = await service.get(id);
     expect(result.status).toBe('cancelled');
   });
@@ -272,7 +297,7 @@ describe('Job order transitions', () => {
   it('Should complete a processing job order', async () => {
     await service.startOrder(id);
     let completed = await service.completeOrder(id, { message: 'youhou !!' });
-    expect(completed).toBe(true);
+    expect(completed.status).toBe('completed');
     let result = await service.get(id);
     expect(result.status).toBe('completed');
     expect(result.runs).toMatchObject([{ result: { message: 'youhou !!' } }]);
@@ -282,7 +307,7 @@ describe('Job order transitions', () => {
     await service.cancelOrder(id);
     await expect(
       service.completeOrder(id, { message: 'youhou !!' })
-    ).rejects.toThrow();
+    ).rejects.toThrow(JobOrderInvalidTransition);
     let result = await service.get(id);
     expect(result.status).toBe('cancelled');
     expect(result.runs).toHaveLength(0);
@@ -293,7 +318,7 @@ describe('Job order transitions', () => {
     await service.completeOrder(id, { message: 'youhou !!' });
     await expect(
       service.completeOrder(id, { message: 'youhou again ?!' })
-    ).rejects.toThrow();
+    ).rejects.toThrow(JobOrderInvalidTransition);
     let result = await service.get(id);
     expect(result.status).toBe('completed');
     expect(result.runs).toMatchObject([{ result: { message: 'youhou !!' } }]);
@@ -302,7 +327,9 @@ describe('Job order transitions', () => {
   it('Should fail resuming a completed job order', async () => {
     await service.startOrder(id);
     await service.completeOrder(id, { message: 'youhou !!' });
-    await expect(service.resumeOrder(id)).rejects.toThrow();
+    await expect(service.resumeOrder(id)).rejects.toThrow(
+      JobOrderInvalidTransition
+    );
     let result = await service.get(id);
     expect(result.status).toBe('completed');
   });
@@ -313,7 +340,7 @@ describe('Job order transitions', () => {
       type: 'error',
       payload: { message: 'oh no !!' },
     });
-    expect(errored).toBe(true);
+    expect(errored.status).toBe('pending');
     let result = await service.get(id);
     expect(result.status).toBe('pending');
     expect(result.runs).toMatchObject([
@@ -326,13 +353,43 @@ describe('Job order transitions', () => {
     ]);
   });
 
+  it('Should timeout a processing job order', async () => {
+    await service.startOrder(id);
+    let errored = await service.errorProcessingOrder(id, {
+      type: 'timeout',
+      payload: { message: 'too long !!' },
+    });
+    expect(errored.status).toBe('pending');
+    let result = await service.get(id);
+    expect(result.status).toBe('pending');
+    expect(result.runs).toMatchObject([
+      {
+        error: {
+          type: 'timeout',
+          payload: { message: 'too long !!' },
+        },
+      },
+    ]);
+  });
+
   it('Should fail to error a pending job order', async () => {
     await expect(
       service.errorProcessingOrder(id, {
         type: 'error',
         payload: { message: 'oh no !!' },
       })
-    ).rejects.toThrow();
+    ).rejects.toThrow(JobOrderInvalidTransition);
+    let result = await service.get(id);
+    expect(result.status).toBe('pending');
+  });
+
+  it('Should fail to timeout a pending job order', async () => {
+    await expect(
+      service.errorProcessingOrder(id, {
+        type: 'timeout',
+        payload: { message: 'too long !!' },
+      })
+    ).rejects.toThrow(JobOrderInvalidTransition);
     let result = await service.get(id);
     expect(result.status).toBe('pending');
   });
@@ -383,7 +440,7 @@ describe('Job order transitions', () => {
       type: 'unprocessable',
       payload: { message: 'oh no !!' },
     });
-    expect(errored).toBe(true);
+    expect(errored.status).toBe('failed');
     let result = await service.get(id);
     expect(result.status).toBe('failed');
     expect(result.runs).toMatchObject([
@@ -403,7 +460,7 @@ describe('Job order transitions', () => {
       payload: { message: 'oh no !!' },
     });
     let resumed = await service.resumeOrder(id);
-    expect(resumed).toBe(true);
+    expect(resumed.status).toBe('pending');
 
     let result = await service.get(id);
     expect(result.status).toBe('pending');
@@ -425,22 +482,30 @@ describe('Job order with failing queuer', () => {
   });
 
   it('Should not create new orders', async () => {
-    queuer.queue = jest.fn(() => Promise.resolve(false));
+    queuer.queue = jest.fn(async () => {
+      throw new Error('queue unavailable');
+    });
     let type = 'MyJobType';
-    await expect(service.requestOrder(type, {})).rejects.toThrow();
+    await expect(service.requestOrder(type, {})).rejects.toThrow(
+      JobOrderUnableToQueue
+    );
   });
 
   it('Should avoid persisting orders on queue fail', async () => {
-    queuer.queue = jest.fn(() => Promise.resolve(false));
+    queuer.queue = jest.fn(async () => {
+      throw new Error('queue unavailable');
+    });
     let type = 'MyJobType';
     let createMock = jest.spyOn(repository, 'create');
-    let deleteMock = jest.spyOn(repository, 'delete');
-    await expect(service.requestOrder(type, {})).rejects.toThrow();
+
+    await expect(service.requestOrder(type, {})).rejects.toThrow(
+      JobOrderUnableToQueue
+    );
     expect(createMock).toHaveBeenCalledTimes(1);
     let createResult = await createMock.mock.results[0].value;
-    expect(deleteMock).toHaveBeenCalledTimes(1);
-    expect(deleteMock).toBeCalledWith(createResult.id);
-    await expect(repository.find(createResult.id)).rejects.toThrow();
+
+    let abortedOrder = await service.get(createResult.id);
+    expect(abortedOrder.status).toBe('creating');
   });
 });
 
@@ -467,22 +532,28 @@ describe('Job order with failing emitter', () => {
 
     emitter.toggleFail(true); // Simulate emitter failure
 
-    await expect(service.requestOrder(type, {})).rejects.toThrow();
+    await expect(service.requestOrder(type, {})).rejects.toThrow(
+      JobOrderUnableToNotify
+    );
   });
 
   it('Should avoid persisting orders on event fail', async () => {
     let type = 'MyJobType';
     let createMock = jest.spyOn(repository, 'create');
-    let deleteMock = jest.spyOn(repository, 'delete');
+    // let deleteMock = jest.spyOn(repository, 'delete');
 
     emitter.toggleFail(true); // Simulate emitter failure
 
-    await expect(service.requestOrder(type, {})).rejects.toThrow();
+    await expect(service.requestOrder(type, {})).rejects.toThrow(
+      JobOrderUnableToNotify
+    );
     expect(createMock).toHaveBeenCalledTimes(1);
     let createResult = await createMock.mock.results[0].value;
-    expect(deleteMock).toHaveBeenCalledTimes(1);
-    expect(deleteMock).toBeCalledWith(createResult.id);
-    await expect(repository.find(createResult.id)).rejects.toThrow();
+    // expect(deleteMock).toHaveBeenCalledTimes(1);
+    // expect(deleteMock).toBeCalledWith(createResult.id);
+
+    let abortedOrder = await service.get(createResult.id);
+    expect(abortedOrder.status).toBe('creating');
   });
 
   it('Should avoid queuing orders on event fail', async () => {
@@ -492,7 +563,9 @@ describe('Job order with failing emitter', () => {
 
     emitter.toggleFail(true); // Simulate emitter failure
 
-    await expect(service.requestOrder(type, {})).rejects.toThrow();
+    await expect(service.requestOrder(type, {})).rejects.toThrow(
+      JobOrderUnableToNotify
+    );
     expect(queueMock).toHaveBeenCalledTimes(1);
     let queueArgs = queueMock.mock.calls[0];
     expect(unqueueMock).toHaveBeenCalledTimes(1);
@@ -506,8 +579,10 @@ describe('Job order with failing emitter', () => {
 
     emitter.toggleFail(true); // Simulate emitter failure
 
-    await expect(service.cancelOrder(id)).rejects.toThrow();
-    let order = await repository.find(id);
+    await expect(service.cancelOrder(id)).rejects.toThrow(
+      JobOrderUnableToNotify
+    );
+    let order = await service.get(id);
     expect(order.status).toBe('pending');
   });
 
@@ -517,8 +592,10 @@ describe('Job order with failing emitter', () => {
 
     emitter.toggleFail(true); // Simulate emitter failure
 
-    await expect(service.expireOrder(id, tomorrow)).rejects.toThrow();
-    let order = await repository.find(id);
+    await expect(service.expireOrder(id, tomorrow)).rejects.toThrow(
+      JobOrderUnableToNotify
+    );
+    let order = await service.get(id);
     expect(order.status).toBe('pending');
   });
 
@@ -528,9 +605,11 @@ describe('Job order with failing emitter', () => {
 
     emitter.toggleFail(true); // Simulate emitter failure
 
-    let initialOrder = structuredClone(await repository.find(id));
-    await expect(service.expireOrder(id, tomorrow)).rejects.toThrow();
-    let finalOrder = structuredClone(await repository.find(id));
+    let initialOrder = structuredClone(await service.get(id));
+    await expect(service.expireOrder(id, tomorrow)).rejects.toThrow(
+      JobOrderUnableToNotify
+    );
+    let finalOrder = structuredClone(await service.get(id));
     expect(finalOrder).toMatchObject(initialOrder);
   });
 
@@ -541,9 +620,11 @@ describe('Job order with failing emitter', () => {
 
     emitter.toggleFail(true); // Simulate emitter failure
 
-    let initialOrder = structuredClone(await repository.find(id));
-    await expect(service.resumeOrder(id)).rejects.toThrow();
-    let finalOrder = structuredClone(await repository.find(id));
+    let initialOrder = structuredClone(await service.get(id));
+    await expect(service.resumeOrder(id)).rejects.toThrow(
+      JobOrderUnableToNotify
+    );
+    let finalOrder = structuredClone(await service.get(id));
     expect(finalOrder).toMatchObject(initialOrder);
   });
 
@@ -553,9 +634,11 @@ describe('Job order with failing emitter', () => {
 
     emitter.toggleFail(true); // Simulate emitter failure
 
-    let initialOrder = structuredClone(await repository.find(id));
-    await expect(service.startOrder(id)).rejects.toThrow();
-    let finalOrder = structuredClone(await repository.find(id));
+    let initialOrder = structuredClone(await service.get(id));
+    await expect(service.startOrder(id)).rejects.toThrow(
+      JobOrderUnableToNotify
+    );
+    let finalOrder = structuredClone(await service.get(id));
     expect(finalOrder).toMatchObject(initialOrder);
   });
 
@@ -566,11 +649,11 @@ describe('Job order with failing emitter', () => {
 
     emitter.toggleFail(true); // Simulate emitter failure
 
-    let initialOrder = structuredClone(await repository.find(id));
+    let initialOrder = structuredClone(await service.get(id));
     await expect(
       service.completeOrder(id, { message: 'success' })
-    ).rejects.toThrow();
-    let finalOrder = structuredClone(await repository.find(id));
+    ).rejects.toThrow(JobOrderUnableToNotify);
+    let finalOrder = structuredClone(await service.get(id));
     expect(finalOrder).toMatchObject(initialOrder);
   });
 
@@ -581,11 +664,11 @@ describe('Job order with failing emitter', () => {
 
     emitter.toggleFail(true); // Simulate emitter failure
 
-    let initialOrder = structuredClone(await repository.find(id));
+    let initialOrder = structuredClone(await service.get(id));
     await expect(
       service.completeOrder(id, { message: 'success' })
-    ).rejects.toThrow();
-    let finalOrder = structuredClone(await repository.find(id));
+    ).rejects.toThrow(JobOrderUnableToNotify);
+    let finalOrder = structuredClone(await service.get(id));
     expect(finalOrder).toMatchObject(initialOrder);
   });
 
@@ -596,14 +679,14 @@ describe('Job order with failing emitter', () => {
 
     emitter.toggleFail(true); // Simulate emitter failure
 
-    let initialOrder = structuredClone(await repository.find(id));
+    let initialOrder = structuredClone(await service.get(id));
     await expect(
       service.errorProcessingOrder(id, {
         type: 'error',
         payload: {},
       })
-    ).rejects.toThrow();
-    let finalOrder = structuredClone(await repository.find(id));
+    ).rejects.toThrow(JobOrderUnableToNotify);
+    let finalOrder = structuredClone(await service.get(id));
     expect(finalOrder).toMatchObject(initialOrder);
   });
 
@@ -614,14 +697,14 @@ describe('Job order with failing emitter', () => {
 
     emitter.toggleFail(true); // Simulate emitter failure
 
-    let initialOrder = structuredClone(await repository.find(id));
+    let initialOrder = structuredClone(await service.get(id));
     await expect(
       service.errorProcessingOrder(id, {
         type: 'unprocessable',
         payload: {},
       })
-    ).rejects.toThrow();
-    let finalOrder = structuredClone(await repository.find(id));
+    ).rejects.toThrow(JobOrderUnableToNotify);
+    let finalOrder = structuredClone(await service.get(id));
     expect(finalOrder).toMatchObject(initialOrder);
   });
 
@@ -642,14 +725,14 @@ describe('Job order with failing emitter', () => {
 
     emitter.toggleFail(true); // Simulate emitter failure
 
-    let initialOrder = structuredClone(await repository.find(id));
+    let initialOrder = structuredClone(await service.get(id));
     await expect(
       service.errorProcessingOrder(id, {
         type: 'error',
         payload: {},
       })
-    ).rejects.toThrow();
-    let finalOrder = structuredClone(await repository.find(id));
+    ).rejects.toThrow(JobOrderUnableToNotify);
+    let finalOrder = structuredClone(await service.get(id));
     expect(finalOrder).toMatchObject(initialOrder);
   });
 });
@@ -661,19 +744,19 @@ describe('Job not found', () => {
   const service = new JobOrderService(repository, queuer, emitter);
 
   it('should fail cancelling', async () => {
-    await expect(service.cancelOrder('42')).rejects.toThrow();
+    await expect(service.cancelOrder('42')).rejects.toThrow(JobOrderNotFound);
   });
 
   it('should fail expiring', async () => {
-    await expect(service.expireOrder('42')).rejects.toThrow();
+    await expect(service.expireOrder('42')).rejects.toThrow(JobOrderNotFound);
   });
 
   it('should fail resuming', async () => {
-    await expect(service.resumeOrder('42')).rejects.toThrow();
+    await expect(service.resumeOrder('42')).rejects.toThrow(JobOrderNotFound);
   });
 
   it('should fail starting', async () => {
-    await expect(service.startOrder('42')).rejects.toThrow();
+    await expect(service.startOrder('42')).rejects.toThrow(JobOrderNotFound);
   });
 
   it('should fail erroring', async () => {
@@ -682,14 +765,16 @@ describe('Job not found', () => {
         type: 'error',
         payload: {},
       })
-    ).rejects.toThrow();
+    ).rejects.toThrow(JobOrderNotFound);
   });
 
   it('should fail completing', async () => {
-    await expect(service.completeOrder('42', {})).rejects.toThrow();
+    await expect(service.completeOrder('42', {})).rejects.toThrow(
+      JobOrderNotFound
+    );
   });
 
   it('should fail getting', async () => {
-    await expect(service.get('42')).rejects.toThrow();
+    await expect(service.get('42')).rejects.toThrow(JobOrderNotFound);
   });
 });

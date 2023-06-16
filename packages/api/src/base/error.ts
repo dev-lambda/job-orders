@@ -1,5 +1,19 @@
+import { Message, MessageSchema } from '@dev-lambda/job-orders-dto';
 import { Request, Response, NextFunction } from 'express';
 import logger from 'src/logger';
+
+export const ServerErrorResponse = {
+  500: {
+    description:
+      'Something unexpected happen. Possibly a related sub-service (db, message queue, ...) failed to perform some action or an internal state invariant is corrupted.',
+    summary: 'Server error',
+    content: {
+      'application/json': {
+        schema: MessageSchema,
+      },
+    },
+  },
+};
 
 export const error = (
   error: Error,
@@ -23,7 +37,8 @@ export const error = (
     `500 Internal Server Error ${method} ${path} ${JSON.stringify(query)}`,
     error
   );
-  return res.status(500).json({ message });
+  const response: Message = { message };
+  return res.status(500).json(response);
 };
 
 /**

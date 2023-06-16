@@ -1,5 +1,5 @@
 export interface EmitterService<T, U> {
-  shout(type: T, payload: U): Promise<boolean>;
+  shout(type: T, payload: U): Promise<Event<T, U>>;
 }
 
 export interface Event<T, U> {

@@ -1,3 +1,4 @@
+import { MessageSchema } from './baseAPI';
 import z from './zod';
 
 /**
@@ -10,40 +11,51 @@ export const GenericPayloadSchema = z.record(z.string(), z.any());
 
 export type GenericPayload = z.infer<typeof GenericPayloadSchema>;
 
-export const JobParamsSchema = z.object({
-  maxRetry: z.coerce
-    .number()
-    .int()
-    .nonnegative()
-    .openapi({ description: 'Max job retry count', example: 1, default: 3 }),
-  schedule: z.coerce.date().optional().openapi({
-    description: 'Schedule job date',
-    // example: new Date('2023-01-01').toISOString(),
-  }),
-  expiresAt: z.coerce.date().optional().openapi({
-    description: 'Expiration date',
-    // example: new Date('2023-31-12').toISOString(),
-  }),
-  timeout: z.coerce.number().optional().openapi({
-    description: 'Indicative job order timeout (in seconds)',
-    example: 10,
-    default: 300,
-  }),
-});
+export const JobParamsSchema = z
+  .object({
+    maxRetry: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .openapi({ description: 'Max job retry count', example: 1, default: 3 }),
+    schedule: z.coerce
+      .date()
+      .optional()
+      .openapi({
+        description: 'Schedule job date',
+        example: new Date('2023-01-01').toISOString(),
+      }),
+    expiresAt: z.coerce
+      .date()
+      .optional()
+      .openapi({
+        description: 'Expiration date',
+        example: new Date('2023-12-31').toISOString(),
+      }),
+    timeout: z.coerce.number().optional().openapi({
+      description: 'Indicative job order timeout (in seconds)',
+      example: 10,
+      default: 300,
+    }),
+  })
+  .openapi('JobOrderParams');
 
 export type JobParams = z.infer<typeof JobParamsSchema>;
 
-export const JobStatusSchema = z.enum([
-  'pending',
-  'processing',
-  'completed',
-  'failed',
-  'cancelled',
-]);
+export const JobStatusSchema = z
+  .enum([
+    'creating',
+    'pending',
+    'processing',
+    'completed',
+    'failed',
+    'cancelled',
+  ])
+  .openapi('JobOrderStatus');
 
 export type JobStatus = z.infer<typeof JobStatusSchema>;
 
-export const JobErrorTypeSchema = z.enum(['unprocessable', 'error']);
+export const JobErrorTypeSchema = z.enum(['unprocessable', 'error', 'timeout']);
 
 export type JobErrorType = z.infer<typeof JobErrorTypeSchema>;
 
@@ -60,11 +72,6 @@ export const JobRunSchema = z.object({
 });
 
 export type JobRun = z.infer<typeof JobRunSchema>;
-
-// export interface JobRun {
-//   result?: GenericPayload;
-//   error?: JobError;
-// }
 
 export const JobOrderSchemaGenerator = <T extends z.ZodTypeAny>(schema: T) =>
   z.object({
@@ -89,10 +96,35 @@ export const GenericJobOrderSchema =
 
 export type GenericJobOrder = z.infer<typeof GenericJobOrderSchema>;
 
-export interface JobOrder<T> {
-  type: string;
-  payload: T;
-  params: JobParams;
-  status: JobStatus;
-  runs: JobRun[];
-}
+export const JobOrderInvalidTransitionSchema = MessageSchema.extend({
+  from: JobStatusSchema.openapi({
+    description: 'The current status of the job',
+    example: 'pending',
+  }),
+  to: JobStatusSchema.openapi({
+    description: 'The requested new status of the job',
+    example: 'completed',
+  }),
+  expectingFrom: z.array(JobStatusSchema).openapi({
+    description:
+      'The valid set of status that may lead to the target job status',
+    example: ['processing'],
+  }),
+});
+export const InvalidJobTransition = (example: JobOrderInvalidTransition) => ({
+  409: {
+    description:
+      'Attempting to transition a job order to a status that cannot be reached from its current state.',
+    summary: 'Invalid job order transition',
+    content: {
+      'application/json': {
+        schema: JobOrderInvalidTransitionSchema,
+        example,
+      },
+    },
+  },
+});
+
+export type JobOrderInvalidTransition = z.infer<
+  typeof JobOrderInvalidTransitionSchema
+>;

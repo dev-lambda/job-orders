@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { message, messageSchema } from '@dev-lambda/job-orders-dto';
+import { Message, MessageSchema } from '@dev-lambda/job-orders-dto';
 import registry from 'src/doc/openApi';
 
 registry.registerPath({
@@ -13,7 +13,7 @@ registry.registerPath({
       description: 'The `ok` response',
       content: {
         'application/json': {
-          schema: messageSchema,
+          schema: MessageSchema,
           example: {
             message: 'ok',
           },
@@ -24,6 +24,6 @@ registry.registerPath({
 });
 
 export const ok = (_: Request, res: Response) => {
-  const result: message = { message: 'ok' };
+  const result: Message = { message: 'ok' };
   return res.status(200).json(result);
 };

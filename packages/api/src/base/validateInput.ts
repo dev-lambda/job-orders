@@ -1,4 +1,4 @@
-import { ErrorSchema, z } from '@dev-lambda/job-orders-dto';
+import { ValidationErrorSchema, z } from '@dev-lambda/job-orders-dto';
 import { NextFunction, Request, Response } from 'express';
 
 type InputValidation = {
@@ -14,7 +14,7 @@ export const InvaidRequestResponse = {
     summary: 'Invalid request',
     content: {
       'application/json': {
-        schema: ErrorSchema,
+        schema: ValidationErrorSchema,
       },
     },
   },

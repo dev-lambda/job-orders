@@ -9,12 +9,13 @@ export class TestEmitterService implements EmitterService<JobEvents, GenericPayl
     this.events = [];
     this.success = true;
   }
-  shout(type: JobEvents, payload: GenericPayload): Promise<boolean> {
+  shout(type: JobEvents, payload: GenericPayload): Promise<Event<JobEvents, GenericPayload>> {
     if (!this.success) {
-      return Promise.resolve(false);
+      return Promise.reject(new Error('Event emission unavailable'));
     }
-    this.events.push({ type, payload });
-    return Promise.resolve(true);
+    const event: Event<JobEvents, GenericPayload> = { type, payload };
+    this.events.push(event);
+    return Promise.resolve(event);
   }
 
   toggleFail(fail: boolean) {

@@ -17,31 +17,31 @@ export class MemoryJobOrderRepository implements JobOrderRepository {
     return Promise.resolve({ id, ...order });
   }
 
-  setStatus(id: string, status: JobStatus): Promise<boolean> {
+  setStatus(id: string, status: JobStatus): Promise<PersistedJobOrder> {
     let order = this.orders.get(id);
     if (!order) {
       return Promise.reject(`Job order not found ${id}`);
     }
     order.status = status;
-    return Promise.resolve(true);
+    return Promise.resolve({ id, ...order });
   }
 
-  addRun(id: string, run: JobRun): Promise<GenericJobOrder> {
+  addRun(id: string, run: JobRun): Promise<PersistedJobOrder> {
     let order = this.orders.get(id);
     if (!order) {
       return Promise.reject(`Job order not found ${id}`);
     }
     order.runs.push(run);
-    return Promise.resolve(order);
+    return Promise.resolve({ id, ...order });
   }
 
-  find(id: string): Promise<GenericJobOrder> {
+  find(id: string): Promise<PersistedJobOrder> {
     return new Promise((resolve) => {
       let order = this.orders.get(id);
       if (!order) {
         throw new Error(`Job order not found ${id}`);
       }
-      return resolve(order);
+      return resolve({ id, ...order });
     });
   }
 
