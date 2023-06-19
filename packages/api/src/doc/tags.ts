@@ -9,10 +9,6 @@ import { OpenAPIV3 } from '@asteasolutions/zod-to-openapi';
 
 const tags: OpenAPIV3.TagObject[] = [
   {
-    name: 'Integration',
-    description: 'Integration support resources',
-  },
-  {
     name: 'JobOrder',
     description: 'Job order requests and status updates',
     externalDocs: { url: 'https://dev-lambda.github.io/job-orders/' },
@@ -24,6 +20,10 @@ const tags: OpenAPIV3.TagObject[] = [
   {
     name: 'Monitoring',
     description: ' Monitoring and health check features',
+  },
+  {
+    name: 'Integration',
+    description: 'Integration support resources',
   },
 ];
 

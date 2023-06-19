@@ -23,6 +23,7 @@ import {
 } from 'src/jobOrderService/JobOrderService';
 import logger from 'src/logger';
 import { ServerErrorResponse } from 'src/base/error';
+import { RouteConfig } from '@asteasolutions/zod-to-openapi';
 // import logger from 'src/logger';
 
 const defaultBasePath = '/api/jobs';
@@ -147,7 +148,7 @@ export default ({
     method: 'put',
     path: `${basePath}/{id}/cancel`,
     summary: 'Cancel a job order',
-    description: 'Request that a not yet processed job order to be cancelled',
+    description: 'Request for job order to be cancelled (before processing).',
     tags: ['JobOrder'],
     request: {
       params: z.object({
